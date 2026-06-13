@@ -4,8 +4,6 @@ LABEL maintainer="jianying-utils"
 LABEL description="剪映草稿自动化 REST API"
 
 # 配置 Debian 国内镜像源
-RUN sed -i 's|http://deb.debian.org/debian|https://mirrors.tuna.tsinghua.edu.cn/debian|g' /etc/apt/sources.list.d/debian.sources && \
-    sed -i 's|http://security.debian.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
 # 安装系统依赖 (libmediainfo 供 pymediainfo 使用)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -16,7 +14,6 @@ RUN apt-get update && \
 WORKDIR /app
 
 # 配置 pip 国内镜像
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 # 安装 Python 依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

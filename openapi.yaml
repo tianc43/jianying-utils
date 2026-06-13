@@ -1,0 +1,2615 @@
+openapi: 3.0.3
+info:
+  title: JianYing Draft API
+  description: 剪映草稿自动化 — 独立部署 REST API
+  version: 0.2.0
+servers:
+- url: https://host.docker.internal:8000
+  description: 剪映草稿 API 服务器
+paths:
+  /health:
+    get:
+      tags:
+      - 系统
+      summary: 健康检查
+      description: 检查服务运行状态
+      operationId: health
+      responses:
+        '200':
+          description: 服务健康状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /drafts:
+    get:
+      tags:
+      - 草稿管理
+      summary: 列出所有草稿
+      description: 列出当前活跃的所有草稿
+      operationId: list_drafts
+      responses:
+        '200':
+          description: 活跃草稿列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftsListResponse'
+    post:
+      tags:
+      - 草稿管理
+      summary: 创建草稿
+      description: 创建新草稿，返回 draft_id 供后续所有操作使用
+      operationId: create_draft
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftCreate'
+        required: true
+      responses:
+        '200':
+          description: 草稿创建成功，返回 draft_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftCreateResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}:
+    get:
+      tags:
+      - 草稿管理
+      summary: 获取草稿信息
+      description: 查看指定草稿的基本信息（尺寸、时长等）
+      operationId: get_draft
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      responses:
+        '200':
+          description: 草稿详细信息（尺寸、时长、帧率等）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftInfoResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - 草稿管理
+      summary: 删除草稿
+      description: 删除指定草稿及其文件
+      operationId: delete_draft
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/save:
+    post:
+      tags:
+      - 草稿管理
+      summary: 保存草稿
+      description: 将草稿写入磁盘
+      operationId: save_draft
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      responses:
+        '200':
+          description: 草稿保存成功，返回脚本路径
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftSaveResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/export:
+    post:
+      tags:
+      - 草稿管理
+      summary: 导出草稿 JSON
+      description: 导出草稿为 JSON 字符串
+      operationId: export_draft
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      responses:
+        '200':
+          description: 草稿 JSON 导出
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftExportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/tracks:
+    post:
+      tags:
+      - 轨道
+      summary: 添加轨道
+      description: 向草稿添加一条轨道
+      operationId: add_track
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackAdd'
+      responses:
+        '200':
+          description: 轨道添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackAddResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - 轨道
+      summary: 列出轨道
+      description: 列出草稿中所有轨道
+      operationId: list_tracks
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      responses:
+        '200':
+          description: 轨道列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/videos:
+    post:
+      tags:
+      - 视频
+      summary: 添加视频
+      description: 添加单个视频或图片片段
+      operationId: add_video
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoAdd'
+      responses:
+        '200':
+          description: 片段添加成功，返回 segment_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/videos/batch:
+    post:
+      tags:
+      - 视频
+      summary: 批量添加视频
+      description: 批量添加视频或图片片段
+      operationId: add_videos_batch
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoBatch'
+      responses:
+        '200':
+          description: 批量操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/audios:
+    post:
+      tags:
+      - 音频
+      summary: 添加音频
+      description: 添加单个音频片段
+      operationId: add_audio
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioAdd'
+      responses:
+        '200':
+          description: 片段添加成功，返回 segment_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/audios/batch:
+    post:
+      tags:
+      - 音频
+      summary: 批量添加音频
+      description: 批量添加音频片段
+      operationId: add_audios_batch
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioBatch'
+      responses:
+        '200':
+          description: 批量操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/audios/fade:
+    post:
+      tags:
+      - 音频
+      summary: 淡入淡出
+      description: 为音频片段添加淡入淡出效果
+      operationId: audio_fade
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioFade'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/texts:
+    post:
+      tags:
+      - 文本
+      summary: 添加文本
+      description: 添加单个文本片段（支持描边、背景、阴影等样式）
+      operationId: add_text
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextAdd'
+      responses:
+        '200':
+          description: 片段添加成功，返回 segment_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/captions:
+    post:
+      tags:
+      - 字幕
+      summary: 批量添加字幕
+      description: 批量添加字幕片段
+      operationId: add_captions
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptionsAdd'
+      responses:
+        '200':
+          description: 批量操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/effects/scene:
+    post:
+      tags:
+      - 特效
+      summary: 添加场景特效
+      description: 向特效轨道添加场景特效
+      operationId: effect_scene
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EffectAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/effects/character:
+    post:
+      tags:
+      - 特效
+      summary: 添加人物特效
+      description: 向特效轨道添加人物特效
+      operationId: effect_character
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EffectAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/effects/filter:
+    post:
+      tags:
+      - 特效
+      summary: 添加滤镜
+      description: 向滤镜轨道添加滤镜
+      operationId: effect_filter
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/effects/batch:
+    post:
+      tags:
+      - 特效
+      summary: 批量添加特效
+      description: 批量添加视频特效
+      operationId: effect_batch
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EffectBatch'
+      responses:
+        '200':
+          description: 批量操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/stickers:
+    post:
+      tags:
+      - 贴纸
+      summary: 添加贴纸
+      description: 添加贴纸片段
+      operationId: add_sticker
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickerAdd'
+      responses:
+        '200':
+          description: 片段添加成功，返回 segment_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/animations/video-intro:
+    post:
+      tags:
+      - 动画
+      summary: 视频入场动画
+      description: 为视频片段添加入场动画
+      operationId: anim_video_intro
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimationAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/animations/video-outro:
+    post:
+      tags:
+      - 动画
+      summary: 视频出场动画
+      description: 为视频片段添加出场动画
+      operationId: anim_video_outro
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimationAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/animations/video-group:
+    post:
+      tags:
+      - 动画
+      summary: 视频组合动画
+      description: 为视频片段添加组合动画
+      operationId: anim_video_group
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimationAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/animations/text-intro:
+    post:
+      tags:
+      - 动画
+      summary: 文本入场动画
+      description: 为文本片段添加入场动画
+      operationId: anim_text_intro
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimationAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/animations/text-outro:
+    post:
+      tags:
+      - 动画
+      summary: 文本出场动画
+      description: 为文本片段添加出场动画
+      operationId: anim_text_outro
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimationAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/animations/text-loop:
+    post:
+      tags:
+      - 动画
+      summary: 文本循环动画
+      description: 为文本片段添加循环动画
+      operationId: anim_text_loop
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimationAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/keyframes:
+    post:
+      tags:
+      - 关键帧
+      summary: 添加关键帧
+      description: 为片段属性添加关键帧
+      operationId: add_keyframe
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyframeAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/keyframes/batch:
+    post:
+      tags:
+      - 关键帧
+      summary: 批量添加关键帧
+      description: 批量添加关键帧
+      operationId: add_keyframes_batch
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyframeBatch'
+      responses:
+        '200':
+          description: 批量操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/transitions:
+    post:
+      tags:
+      - 转场
+      summary: 添加转场
+      description: 为视频片段添加转场效果
+      operationId: add_transition
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionAdd'
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericSuccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/transitions/batch:
+    post:
+      tags:
+      - 转场
+      summary: 批量添加转场
+      description: 批量添加转场效果
+      operationId: add_transitions_batch
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionBatch'
+      responses:
+        '200':
+          description: 批量操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /drafts/{draft_id}/workflow/simple:
+    post:
+      tags:
+      - 工作流
+      summary: 一键创建
+      description: 一键创建完整草稿内容（视频 + 音频 + 字幕 + 标题）
+      operationId: workflow_simple
+      parameters:
+      - name: draft_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Draft Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimpleWorkflow'
+      responses:
+        '200':
+          description: 一键创建完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleWorkflowResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/transitions:
+    get:
+      tags:
+      - 元数据
+      summary: 查询转场列表
+      description: '查询可用转场（mode: 0=全部 1=VIP 2=免费）'
+      operationId: metadata_transitions
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/filters:
+    get:
+      tags:
+      - 元数据
+      summary: 查询滤镜列表
+      operationId: metadata_filters
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/fonts:
+    get:
+      tags:
+      - 元数据
+      summary: 查询字体列表
+      operationId: metadata_fonts
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/masks:
+    get:
+      tags:
+      - 元数据
+      summary: 查询蒙版列表
+      operationId: metadata_masks
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+  /metadata/mix-modes:
+    get:
+      tags:
+      - 元数据
+      summary: 查询混合模式列表
+      operationId: metadata_mix_modes
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+  /metadata/video-intros:
+    get:
+      tags:
+      - 元数据
+      summary: 查询视频入场动画
+      operationId: metadata_video_intros
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/video-outros:
+    get:
+      tags:
+      - 元数据
+      summary: 查询视频出场动画
+      operationId: metadata_video_outros
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/video-group-anims:
+    get:
+      tags:
+      - 元数据
+      summary: 查询视频组合动画
+      operationId: metadata_video_group_anims
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/text-intros:
+    get:
+      tags:
+      - 元数据
+      summary: 查询文本入场动画
+      operationId: metadata_text_intros
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/text-outros:
+    get:
+      tags:
+      - 元数据
+      summary: 查询文本出场动画
+      operationId: metadata_text_outros
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/text-loop-anims:
+    get:
+      tags:
+      - 元数据
+      summary: 查询文本循环动画
+      operationId: metadata_text_loop_anims
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/scene-effects:
+    get:
+      tags:
+      - 元数据
+      summary: 查询场景特效列表
+      operationId: metadata_scene_effects
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/character-effects:
+    get:
+      tags:
+      - 元数据
+      summary: 查询人物特效列表
+      operationId: metadata_character_effects
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /metadata/audio-effects:
+    get:
+      tags:
+      - 元数据
+      summary: 查询音频特效列表
+      operationId: metadata_audio_effects
+      parameters:
+      - name: mode
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Mode
+      responses:
+        '200':
+          description: 元数据查询结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /material/video-info:
+    get:
+      tags:
+      - 素材
+      summary: 获取视频信息
+      description: 获取视频/图片素材的尺寸、时长等信息
+      operationId: material_video_info
+      parameters:
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Path
+      responses:
+        '200':
+          description: 视频/图片素材信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialVideoInfoResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /material/audio-duration:
+    get:
+      tags:
+      - 素材
+      summary: 获取音频时长
+      description: 获取音频文件的时长
+      operationId: material_audio_duration
+      parameters:
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Path
+      responses:
+        '200':
+          description: 音频时长信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialAudioDurationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /util/time/parse:
+    post:
+      tags:
+      - 工具
+      summary: 解析时间
+      description: 将时间字符串解析为微秒数
+      operationId: time_parse
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeParse'
+        required: true
+      responses:
+        '200':
+          description: 时间解析结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeParseResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /util/time/format:
+    post:
+      tags:
+      - 工具
+      summary: 格式化时间
+      description: 将微秒数格式化为可读时间字符串
+      operationId: time_format
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeFormat'
+        required: true
+      responses:
+        '200':
+          description: 时间格式化结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeFormatResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AnimationAdd:
+      properties:
+        segment_id:
+          type: string
+          title: Segment Id
+          description: 片段 ID
+        animation_name:
+          type: string
+          title: Animation Name
+          description: 动画名称
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 动画持续时间
+          nullable: true
+      type: object
+      required:
+      - segment_id
+      - animation_name
+      title: AnimationAdd
+    AudioAdd:
+      properties:
+        audio_path:
+          type: string
+          title: Audio Path
+          description: 音频文件路径
+        start:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Start
+          description: 起始时间
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 持续时间
+          nullable: true
+        speed:
+          type: number
+          title: Speed
+          description: 播放速度
+          default: 1.0
+        volume:
+          type: number
+          title: Volume
+          description: 音量
+          default: 1.0
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - audio_path
+      - start
+      title: AudioAdd
+    AudioBatch:
+      properties:
+        audio_infos:
+          items:
+            type: object
+            additionalProperties: true
+            description: 音频信息项（支持所有音频字段）
+          type: array
+          title: Audio Infos
+          description: 音频信息列表
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - audio_infos
+      title: AudioBatch
+    AudioFade:
+      properties:
+        segment_id:
+          type: string
+          title: Segment Id
+          description: 片段 ID
+        in_duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: In Duration
+          description: 淡入时长
+        out_duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Out Duration
+          description: 淡出时长
+      type: object
+      required:
+      - segment_id
+      - in_duration
+      - out_duration
+      title: AudioFade
+    CaptionItem:
+      properties:
+        text:
+          type: string
+          title: Text
+          description: 字幕文本
+        start:
+          type: integer
+          title: Start
+          description: 起始时间（微秒）
+        end:
+          type: integer
+          title: End
+          description: 结束时间（微秒）
+      type: object
+      required:
+      - text
+      - start
+      - end
+      title: CaptionItem
+    CaptionsAdd:
+      properties:
+        captions:
+          items:
+            $ref: '#/components/schemas/CaptionItem'
+          type: array
+          title: Captions
+          description: 字幕列表
+        font:
+          title: Font
+          description: 字体名称
+          nullable: true
+          type: string
+        font_size:
+          type: number
+          title: Font Size
+          description: 字体大小
+          default: 5.0
+        text_color:
+          type: string
+          title: Text Color
+          description: 文字颜色
+          default: '#FFFFFF'
+        alpha:
+          type: number
+          title: Alpha
+          description: 不透明度
+          default: 1.0
+        bold:
+          type: boolean
+          title: Bold
+          description: 加粗
+          default: false
+        italic:
+          type: boolean
+          title: Italic
+          description: 斜体
+          default: false
+        underline:
+          type: boolean
+          title: Underline
+          description: 下划线
+          default: false
+        alignment:
+          type: integer
+          title: Alignment
+          description: '对齐方式: 0=左 1=中 2=右'
+          default: 1
+        letter_spacing:
+          type: integer
+          title: Letter Spacing
+          description: 字符间距
+          default: 0
+        line_spacing:
+          type: integer
+          title: Line Spacing
+          description: 行间距
+          default: 0
+        line_max_width:
+          type: number
+          title: Line Max Width
+          description: 最大行宽比例
+          default: 0.82
+        auto_wrapping:
+          type: boolean
+          title: Auto Wrapping
+          description: 自动换行
+          default: true
+        border:
+          title: Border
+          description: 描边设置
+          nullable: true
+          additionalProperties: true
+          type: object
+        background:
+          title: Background
+          description: 背景设置
+          nullable: true
+          additionalProperties: true
+          type: object
+        shadow:
+          title: Shadow
+          description: 阴影设置
+          nullable: true
+          additionalProperties: true
+          type: object
+        clip_settings:
+          title: Clip Settings
+          description: 图像调节
+          nullable: true
+          additionalProperties: true
+          type: object
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+        has_shadow:
+          type: boolean
+          title: Has Shadow
+          description: 启用阴影
+          default: false
+      type: object
+      required:
+      - captions
+      title: CaptionsAdd
+    DraftCreate:
+      properties:
+        width:
+          type: integer
+          title: Width
+          description: 视频宽度（像素）
+          default: 1920
+        height:
+          type: integer
+          title: Height
+          description: 视频高度（像素）
+          default: 1080
+        fps:
+          type: integer
+          title: Fps
+          description: 帧率
+          default: 30
+        name:
+          type: string
+          title: Name
+          description: 草稿名称（可选，不填则自动生成）
+          default: ''
+      type: object
+      title: DraftCreate
+    EffectAdd:
+      properties:
+        effect_name:
+          type: string
+          title: Effect Name
+          description: 特效名称
+        start:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Start
+          description: 起始时间
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 持续时间
+        params:
+          title: Params
+          description: 特效参数 0~100
+          nullable: true
+          items:
+            type: number
+          type: array
+        track_name:
+          title: Track Name
+          description: 特效轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - effect_name
+      - start
+      - duration
+      title: EffectAdd
+    EffectBatch:
+      properties:
+        effect_infos:
+          items:
+            type: object
+            additionalProperties: true
+            description: 特效信息项（支持所有特效字段）
+          type: array
+          title: Effect Infos
+          description: 特效列表
+        track_name:
+          title: Track Name
+          description: 特效轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - effect_infos
+      title: EffectBatch
+    FilterAdd:
+      properties:
+        filter_name:
+          type: string
+          title: Filter Name
+          description: 滤镜名称
+        start:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Start
+          description: 起始时间
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 持续时间
+        intensity:
+          type: number
+          title: Intensity
+          description: 滤镜强度 0~100
+          default: 100.0
+        track_name:
+          title: Track Name
+          description: 滤镜轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - filter_name
+      - start
+      - duration
+      title: FilterAdd
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    KeyframeAdd:
+      properties:
+        segment_id:
+          type: string
+          title: Segment Id
+          description: 片段 ID
+        property_name:
+          type: string
+          title: Property Name
+          description: 属性名称
+        time_offset:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Time Offset
+          description: 时间偏移量
+        value:
+          type: number
+          title: Value
+          description: 属性值
+      type: object
+      required:
+      - segment_id
+      - property_name
+      - time_offset
+      - value
+      title: KeyframeAdd
+    KeyframeBatch:
+      properties:
+        keyframes:
+          items:
+            type: object
+            additionalProperties: true
+            description: 关键帧信息项（含 segment_id, property_name, time_offset, value 等）
+          type: array
+          title: Keyframes
+          description: 关键帧列表
+      type: object
+      required:
+      - keyframes
+      title: KeyframeBatch
+    SimpleWorkflow:
+      properties:
+        width:
+          type: integer
+          title: Width
+          description: 视频宽度
+          default: 1920
+        height:
+          type: integer
+          title: Height
+          description: 视频高度
+          default: 1080
+        captions:
+          items:
+            $ref: '#/components/schemas/CaptionItem'
+          type: array
+          title: Captions
+          description: 字幕列表
+        title_text:
+          title: Title Text
+          description: 标题文本
+          nullable: true
+          type: string
+        video_path:
+          title: Video Path
+          description: 视频文件路径
+          nullable: true
+          type: string
+        audio_path:
+          title: Audio Path
+          description: 音频文件路径
+          nullable: true
+          type: string
+      type: object
+      title: SimpleWorkflow
+    StickerAdd:
+      properties:
+        resource_id:
+          type: string
+          title: Resource Id
+          description: 贴纸资源 ID
+        start:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Start
+          description: 起始时间
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 持续时间
+        transform_x:
+          type: number
+          title: Transform X
+          description: X 位移
+          default: 0.0
+        transform_y:
+          type: number
+          title: Transform Y
+          description: Y 位移
+          default: 0.0
+        scale_x:
+          type: number
+          title: Scale X
+          description: X 缩放
+          default: 1.0
+        scale_y:
+          type: number
+          title: Scale Y
+          description: Y 缩放
+          default: 1.0
+        alpha:
+          type: number
+          title: Alpha
+          description: 不透明度
+          default: 1.0
+        rotation:
+          type: number
+          title: Rotation
+          description: 旋转角度
+          default: 0.0
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - resource_id
+      - start
+      - duration
+      title: StickerAdd
+    TextAdd:
+      properties:
+        text:
+          type: string
+          title: Text
+          description: 文本内容
+        start:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Start
+          description: 起始时间
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 持续时间
+        font:
+          title: Font
+          description: 字体名称
+          nullable: true
+          type: string
+        font_size:
+          type: number
+          title: Font Size
+          description: 字体大小
+          default: 8.0
+        text_color:
+          type: string
+          title: Text Color
+          description: '文字颜色 #RRGGBB'
+          default: '#FFFFFF'
+        alpha:
+          type: number
+          title: Alpha
+          description: 不透明度 0~1
+          default: 1.0
+        bold:
+          type: boolean
+          title: Bold
+          description: 加粗
+          default: false
+        italic:
+          type: boolean
+          title: Italic
+          description: 斜体
+          default: false
+        underline:
+          type: boolean
+          title: Underline
+          description: 下划线
+          default: false
+        alignment:
+          type: integer
+          title: Alignment
+          description: '对齐: 0=左 1=中 2=右'
+          default: 0
+        vertical:
+          type: boolean
+          title: Vertical
+          description: 竖排文本
+          default: false
+        letter_spacing:
+          type: integer
+          title: Letter Spacing
+          description: 字符间距
+          default: 0
+        line_spacing:
+          type: integer
+          title: Line Spacing
+          description: 行间距
+          default: 0
+        border:
+          title: Border
+          description: 描边设置
+          nullable: true
+          additionalProperties: true
+          type: object
+        background:
+          title: Background
+          description: 背景设置
+          nullable: true
+          additionalProperties: true
+          type: object
+        shadow:
+          title: Shadow
+          description: 阴影设置
+          nullable: true
+          additionalProperties: true
+          type: object
+        clip_settings:
+          title: Clip Settings
+          description: 图像调节
+          nullable: true
+          additionalProperties: true
+          type: object
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - text
+      - start
+      - duration
+      title: TextAdd
+    TimeFormat:
+      properties:
+        microseconds:
+          type: integer
+          title: Microseconds
+          description: 微秒数
+      type: object
+      required:
+      - microseconds
+      title: TimeFormat
+    TimeParse:
+      properties:
+        time_input:
+          anyOf:
+          - type: string
+          - type: number
+          - type: integer
+          title: Time Input
+          description: 时间字符串或微秒数
+      type: object
+      required:
+      - time_input
+      title: TimeParse
+    TrackAdd:
+      properties:
+        track_type:
+          type: string
+          title: Track Type
+          description: '轨道类型: video / audio / text / effect / filter / sticker'
+        track_name:
+          title: Track Name
+          description: 轨道名称（同类型多条时必填）
+          nullable: true
+          type: string
+        mute:
+          type: boolean
+          title: Mute
+          description: 是否静音
+          default: false
+        relative_index:
+          type: integer
+          title: Relative Index
+          description: 相对图层位置，越大越靠前
+          default: 0
+      type: object
+      required:
+      - track_type
+      title: TrackAdd
+    TransitionAdd:
+      properties:
+        segment_id:
+          type: string
+          title: Segment Id
+          description: 片段 ID
+        transition_name:
+          type: string
+          title: Transition Name
+          description: 转场名称
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 转场持续时间
+          nullable: true
+      type: object
+      required:
+      - segment_id
+      - transition_name
+      title: TransitionAdd
+    TransitionBatch:
+      properties:
+        transitions:
+          items:
+            type: object
+            additionalProperties: true
+            description: 转场信息项（含 segment_id, transition_name, duration 等）
+          type: array
+          title: Transitions
+          description: 转场列表
+      type: object
+      required:
+      - transitions
+      title: TransitionBatch
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+          description: 导致错误的输入值
+        ctx:
+          type: object
+          title: Context
+          description: 错误上下文
+          additionalProperties: true
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VideoAdd:
+      properties:
+        video_path:
+          type: string
+          title: Video Path
+          description: 视频/图片文件路径
+        start:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Start
+          description: 起始时间（微秒或时间字符串如 5s）
+        duration:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Duration
+          description: 持续时间
+          nullable: true
+        speed:
+          type: number
+          title: Speed
+          description: 播放速度
+          default: 1.0
+        volume:
+          type: number
+          title: Volume
+          description: 音量
+          default: 1.0
+        alpha:
+          title: Alpha
+          description: 不透明度 0~1
+          nullable: true
+          type: number
+        transform_x:
+          title: Transform X
+          description: X 位移
+          nullable: true
+          type: number
+        transform_y:
+          title: Transform Y
+          description: Y 位移
+          nullable: true
+          type: number
+        scale_x:
+          title: Scale X
+          description: X 缩放
+          nullable: true
+          type: number
+        scale_y:
+          title: Scale Y
+          description: Y 缩放
+          nullable: true
+          type: number
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - video_path
+      - start
+      title: VideoAdd
+    VideoBatch:
+      properties:
+        video_infos:
+          items:
+            type: object
+            additionalProperties: true
+            description: 视频信息项（支持所有视频字段）
+          type: array
+          title: Video Infos
+          description: 视频信息列表
+        track_name:
+          title: Track Name
+          description: 目标轨道名称
+          nullable: true
+          type: string
+      type: object
+      required:
+      - video_infos
+      title: VideoBatch
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        status:
+          type: string
+          description: 服务状态
+          example: ok
+        version:
+          type: string
+          description: API 版本号
+          example: 0.2.0
+        drafts_dir:
+          type: string
+          description: 草稿存储目录
+        active_drafts:
+          type: integer
+          description: 当前活跃草稿数
+      additionalProperties: false
+    DraftCreateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        draft_id:
+          type: string
+          description: 草稿唯一 ID（12 位 hex）
+          example: ac51f93630c2
+        draft_name:
+          type: string
+          description: 草稿名称
+        draft_folder:
+          type: string
+          description: 草稿文件夹路径
+        script_path:
+          type: string
+          description: 草稿脚本文件路径
+      additionalProperties: false
+    DraftsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        drafts:
+          type: array
+          items:
+            type: object
+            properties:
+              draft_id:
+                type: string
+              draft_name:
+                type: string
+              draft_folder:
+                type: string
+        count:
+          type: integer
+          description: 草稿总数
+      additionalProperties: false
+    DraftInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        draft_folder:
+          type: string
+          description: 草稿文件夹路径
+        draft_name:
+          type: string
+          description: 草稿名称
+        script_path:
+          type: string
+          description: 草稿脚本文件路径
+        width:
+          type: integer
+          description: 视频宽度
+        height:
+          type: integer
+          description: 视频高度
+        fps:
+          type: integer
+          description: 帧率
+        duration:
+          type: integer
+          description: 草稿总时长（微秒）
+      additionalProperties: false
+    DraftExportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        json_string:
+          type: string
+          description: 草稿 JSON 字符串
+        draft_name:
+          type: string
+          description: 草稿名称
+      additionalProperties: false
+    GenericSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+          default: true
+        message:
+          type: string
+          description: 操作结果消息
+      additionalProperties: false
+    DraftSaveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        script_path:
+          type: string
+          description: 保存后的脚本文件路径
+      additionalProperties: false
+    TrackItem:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 轨道名称
+        type:
+          type: string
+          description: 轨道类型
+        render_index:
+          type: integer
+          description: 渲染层级
+        mute:
+          type: boolean
+          description: 是否静音
+        segment_count:
+          type: integer
+          description: 片段数量
+        source:
+          type: string
+          description: 来源标识（imported=导入轨道）
+    TrackAddResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        track_type:
+          type: string
+          description: 轨道类型
+        track_name:
+          type: string
+          description: 轨道名称
+      additionalProperties: false
+    TrackListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        tracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackItem'
+          description: 轨道列表
+      additionalProperties: false
+    MetadataItem:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 内部名称
+        display_name:
+          type: string
+          description: 显示名称
+        is_vip:
+          type: boolean
+          description: 是否 VIP
+        resource_id:
+          type: string
+          description: 资源 ID
+        effect_id:
+          type: string
+          description: 效果 ID
+        duration_us:
+          type: integer
+          description: 持续时间（微秒，动画类）
+        duration_seconds:
+          type: number
+          description: 持续时间（秒，动画类）
+        params:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataParamItem'
+          description: 参数列表
+    MetadataParamItem:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 参数名称
+        default:
+          type: number
+          description: 默认值
+        min:
+          type: number
+          description: 最小值
+        max:
+          type: number
+          description: 最大值
+    SegmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        segment_id:
+          type: string
+          description: 新创建片段的 ID
+      additionalProperties: false
+    BatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        count:
+          type: integer
+          description: 添加的片段数量
+        segment_ids:
+          type: array
+          items:
+            type: string
+          description: 新创建片段的 ID 列表
+      additionalProperties: false
+    TimeParseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        microseconds:
+          type: integer
+          description: 解析后的微秒数
+          example: 5000000
+        message:
+          type: string
+          description: 操作结果消息
+      additionalProperties: false
+    TimeFormatResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        formatted:
+          type: string
+          description: 格式化后的时间字符串
+          example: '00:01:05.000'
+        message:
+          type: string
+          description: 操作结果消息
+      additionalProperties: false
+    SimpleWorkflowResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        duration:
+          type: integer
+          description: 草稿总时长（微秒）
+        duration_seconds:
+          type: number
+          description: 草稿总时长（秒）
+      additionalProperties: false
+    MaterialVideoInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        duration:
+          type: integer
+          description: 时长（微秒）
+        width:
+          type: integer
+          description: 视频宽度
+        height:
+          type: integer
+          description: 视频高度
+        type:
+          type: string
+          description: 素材类型（video/image）
+        material_name:
+          type: string
+          description: 素材文件名
+        path:
+          type: string
+          description: 素材文件路径
+      additionalProperties: false
+    MaterialAudioDurationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        duration:
+          type: integer
+          description: 音频时长（微秒）
+        duration_seconds:
+          type: number
+          description: 音频时长（秒）
+        material_name:
+          type: string
+          description: 素材文件名
+        path:
+          type: string
+          description: 素材文件路径
+      additionalProperties: false
+    MetadataListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataItem'
+          description: 元数据项列表
+        count:
+          type: integer
+          description: 总数
+      additionalProperties: false

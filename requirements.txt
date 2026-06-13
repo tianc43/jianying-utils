@@ -1,0 +1,7 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+pyjianyingdraft>=0.2.6
+imageio>=2.31.0
+pymediainfo>=6.0.0
+uiautomation

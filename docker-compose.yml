@@ -1,0 +1,24 @@
+services:
+  jianying-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jianying-api
+    ports:
+      - "8000:8000"
+    environment:
+      - JIANYING_DRAFTS_DIR=/app/drafts
+    volumes:
+      # 持久化草稿数据
+      - drafts_data:/app/drafts
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  drafts_data:
+    driver: local

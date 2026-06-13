@@ -4,7 +4,7 @@ info:
   description: 剪映草稿自动化 — 独立部署 REST API
   version: 0.2.0
 servers:
-- url: http://localhost:8000
+- url: https://tianc43.xyz/jianying-utils
   description: 剪映草稿 API 服务器
 paths:
   /health:

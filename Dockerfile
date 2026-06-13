@@ -24,8 +24,10 @@ COPY api/ api/
 COPY swagger-viewer.html .
 COPY requirements.txt .
 
-# 设置草稿存储目录
+# 设置草稿存储目录 & 部署 URL 前缀
 ENV JIANYING_DRAFTS_DIR=/app/drafts
+ENV ROOT_PATH=/jianying-utils
+ENV DEPLOY_URL=https://tianc43.xyz/jianying-utils
 RUN mkdir -p /app/drafts
 
 # 暴露端口

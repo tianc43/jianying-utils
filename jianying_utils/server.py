@@ -45,13 +45,18 @@ _OPENAPI_YAML = _API_DIR / "openapi.yaml"
 
 # ═══════════════════════════════════════════════════════════════════════════
 
+# 部署时的 URL 前缀（nginx 反向代理路径），本地开发可不设
+ROOT_PATH = os.environ.get("ROOT_PATH", "")
+DEPLOY_URL = os.environ.get("DEPLOY_URL", "http://localhost:8000")
+
 app = FastAPI(
     title="JianYing Draft API",
     description="剪映草稿自动化 — 独立部署 REST API",
     version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    servers=[{"url": "http://localhost:8000", "description": "剪映草稿 API 服务器"}],
+    root_path=ROOT_PATH,
+    servers=[{"url": DEPLOY_URL, "description": "剪映草稿 API 服务器"}],
     generate_unique_id_function=lambda route: route.name,
 )
 
@@ -62,7 +67,10 @@ def _load_static_openapi():
     """加载本地 openapi.json，让 /docs /redoc /openapi.json 使用静态文件"""
     if _OPENAPI_JSON.exists():
         with open(_OPENAPI_JSON, encoding="utf-8") as f:
-            app.openapi_schema = _json.load(f)
+            schema = _json.load(f)
+        # 动态替换 servers URL 为实际部署地址
+        schema["servers"] = [{"url": DEPLOY_URL, "description": "剪映草稿 API 服务器"}]
+        app.openapi_schema = schema
         return app.openapi_schema
     # 降级：本地文件不存在时用 FastAPI 动态生成
     return _openapi_fastapi_default()

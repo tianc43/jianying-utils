@@ -8,9 +8,13 @@ services:
       - "8000:8000"
     environment:
       - JIANYING_DRAFTS_DIR=/app/drafts
-      - WORKERS=4                          # gunicorn worker 数量
+      - JIANYING_TTS_DIR=/app/tts_output    # TTS 音频输出目录
+      - ROOT_PATH=/jianying-utils            # nginx 代理路径前缀
+      - DEPLOY_URL=https://tianc43.xyz/jianying-utils
+      - WORKERS=4                            # gunicorn worker 数量
     volumes:
-      - drafts_data:/app/drafts            # 草稿持久化
+      - ./data/drafts:/app/drafts            # 草稿文件 → 主机 ./data/drafts
+      - ./data/tts:/app/tts_output           # TTS 音频 → 主机 ./data/tts
     restart: unless-stopped
     # 资源限制
     deploy:
@@ -26,6 +30,4 @@ services:
       retries: 3
       start_period: 15s
 
-volumes:
-  drafts_data:
-    driver: local
+# 无需声明顶层 volumes（bind mount 直接使用主机路径）

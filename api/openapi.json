@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.3",
+  "openapi": "3.1.0",
   "info": {
     "title": "JianYing Draft API",
     "description": "剪映草稿自动化 — 独立部署 REST API",
@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8000",
+      "url": "https://tianc43.xyz/jianying-utils",
       "description": "剪映草稿 API 服务器"
     }
   ],
@@ -250,6 +250,47 @@
                 "schema": {
                   "$ref": "#/components/schemas/DraftExportResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/drafts/{draft_id}/download": {
+      "get": {
+        "tags": [
+          "草稿管理"
+        ],
+        "summary": "下载草稿文件",
+        "description": "下载草稿 JSON 文件（返回 .json 文件流，后续可切 OSS）",
+        "operationId": "download_draft",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -2371,6 +2412,47 @@
           }
         }
       }
+    },
+    "/util/tts/download/{filename}": {
+      "get": {
+        "tags": [
+          "工具"
+        ],
+        "summary": "下载 TTS 音频",
+        "description": "下载 TTS 合成的音频文件（后续可切 OSS 预签名 URL）",
+        "operationId": "tts_download",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2394,11 +2476,13 @@
               },
               {
                 "type": "integer"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Duration",
-            "description": "动画持续时间",
-            "nullable": true
+            "description": "动画持续时间"
           }
         },
         "type": "object",
@@ -2434,11 +2518,13 @@
               },
               {
                 "type": "integer"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Duration",
-            "description": "持续时间",
-            "nullable": true
+            "description": "持续时间"
           },
           "speed": {
             "type": "number",
@@ -2453,10 +2539,16 @@
             "default": 1.0
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           }
         },
         "type": "object",
@@ -2478,10 +2570,16 @@
             "description": "音频信息列表"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           }
         },
         "type": "object",
@@ -2599,10 +2697,16 @@
             "description": "字幕列表"
           },
           "font": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Font",
-            "description": "字体名称",
-            "nullable": true,
-            "type": "string"
+            "description": "字体名称"
           },
           "font_size": {
             "type": "number",
@@ -2671,38 +2775,68 @@
             "default": true
           },
           "border": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Border",
-            "description": "描边设置",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "描边设置"
           },
           "background": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Background",
-            "description": "背景设置",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "背景设置"
           },
           "shadow": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Shadow",
-            "description": "阴影设置",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "阴影设置"
           },
           "clip_settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Clip Settings",
-            "description": "图像调节",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "图像调节"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           },
           "has_shadow": {
             "type": "boolean",
@@ -2995,19 +3129,31 @@
             "description": "持续时间"
           },
           "params": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Params",
-            "description": "特效参数 0~100",
-            "nullable": true,
-            "items": {
-              "type": "number"
-            },
-            "type": "array"
+            "description": "特效参数 0~100"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "特效轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "特效轨道名称"
           }
         },
         "type": "object",
@@ -3030,10 +3176,16 @@
             "description": "特效列表"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "特效轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "特效轨道名称"
           }
         },
         "type": "object",
@@ -3080,10 +3232,16 @@
             "default": 100.0
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "滤镜轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "滤镜轨道名称"
           }
         },
         "type": "object",
@@ -3347,25 +3505,43 @@
             "default": ""
           },
           "duration_us": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Duration Us",
-            "description": "持续时间（微秒，动画类）",
-            "nullable": true,
-            "type": "integer"
+            "description": "持续时间（微秒，动画类）"
           },
           "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Duration Seconds",
-            "description": "持续时间（秒，动画类）",
-            "nullable": true,
-            "type": "number"
+            "description": "持续时间（秒，动画类）"
           },
           "params": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MetadataParamItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Params",
-            "description": "参数列表",
-            "nullable": true,
-            "items": {
-              "$ref": "#/components/schemas/MetadataParamItem"
-            },
-            "type": "array"
+            "description": "参数列表"
           }
         },
         "type": "object",
@@ -3486,22 +3662,40 @@
             "description": "字幕列表"
           },
           "title_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Title Text",
-            "description": "标题文本",
-            "nullable": true,
-            "type": "string"
+            "description": "标题文本"
           },
           "video_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Video Path",
-            "description": "视频文件路径",
-            "nullable": true,
-            "type": "string"
+            "description": "视频文件路径"
           },
           "audio_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Audio Path",
-            "description": "音频文件路径",
-            "nullable": true,
-            "type": "string"
+            "description": "音频文件路径"
           }
         },
         "type": "object",
@@ -3605,10 +3799,16 @@
             "default": 0.0
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           }
         },
         "type": "object",
@@ -3645,10 +3845,16 @@
             "default": "+0Hz"
           },
           "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Output Path",
-            "description": "输出文件路径（可选）",
-            "nullable": true,
-            "type": "string"
+            "description": "输出文件路径（可选）"
           }
         },
         "type": "object",
@@ -3675,6 +3881,12 @@
             "type": "string",
             "title": "Audio Path",
             "description": "音频文件路径",
+            "default": ""
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url",
+            "description": "音频下载 URL",
             "default": ""
           },
           "duration_seconds": {
@@ -3789,10 +4001,16 @@
             "description": "持续时间"
           },
           "font": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Font",
-            "description": "字体名称",
-            "nullable": true,
-            "type": "string"
+            "description": "字体名称"
           },
           "font_size": {
             "type": "number",
@@ -3855,38 +4073,68 @@
             "default": 0
           },
           "border": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Border",
-            "description": "描边设置",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "描边设置"
           },
           "background": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Background",
-            "description": "背景设置",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "背景设置"
           },
           "shadow": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Shadow",
-            "description": "阴影设置",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "阴影设置"
           },
           "clip_settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Clip Settings",
-            "description": "图像调节",
-            "nullable": true,
-            "additionalProperties": true,
-            "type": "object"
+            "description": "图像调节"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           }
         },
         "type": "object",
@@ -3995,10 +4243,16 @@
             "description": "轨道类型: video / audio / text / effect / filter / sticker"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "轨道名称（同类型多条时必填）",
-            "nullable": true,
-            "type": "string"
+            "description": "轨道名称（同类型多条时必填）"
           },
           "mute": {
             "type": "boolean",
@@ -4079,10 +4333,16 @@
             "default": 0
           },
           "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Source",
-            "description": "来源标识（imported=导入轨道）",
-            "nullable": true,
-            "type": "string"
+            "description": "来源标识（imported=导入轨道）"
           }
         },
         "type": "object",
@@ -4138,11 +4398,13 @@
               },
               {
                 "type": "integer"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Duration",
-            "description": "转场持续时间",
-            "nullable": true
+            "description": "转场持续时间"
           }
         },
         "type": "object",
@@ -4236,11 +4498,13 @@
               },
               {
                 "type": "integer"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Duration",
-            "description": "持续时间",
-            "nullable": true
+            "description": "持续时间"
           },
           "speed": {
             "type": "number",
@@ -4255,40 +4519,76 @@
             "default": 1.0
           },
           "alpha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Alpha",
-            "description": "不透明度 0~1",
-            "nullable": true,
-            "type": "number"
+            "description": "不透明度 0~1"
           },
           "transform_x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Transform X",
-            "description": "X 位移",
-            "nullable": true,
-            "type": "number"
+            "description": "X 位移"
           },
           "transform_y": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Transform Y",
-            "description": "Y 位移",
-            "nullable": true,
-            "type": "number"
+            "description": "Y 位移"
           },
           "scale_x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Scale X",
-            "description": "X 缩放",
-            "nullable": true,
-            "type": "number"
+            "description": "X 缩放"
           },
           "scale_y": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Scale Y",
-            "description": "Y 缩放",
-            "nullable": true,
-            "type": "number"
+            "description": "Y 缩放"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           }
         },
         "type": "object",
@@ -4310,10 +4610,16 @@
             "description": "视频信息列表"
           },
           "track_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Track Name",
-            "description": "目标轨道名称",
-            "nullable": true,
-            "type": "string"
+            "description": "目标轨道名称"
           }
         },
         "type": "object",

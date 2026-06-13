@@ -17,7 +17,7 @@ from pathlib import Path
 from fastapi import FastAPI, Query, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel, Field
 import json as _json
 
@@ -101,6 +101,11 @@ app.add_middleware(
 # 挂载静态文件目录（Swagger UI 查看器等）
 if _PROJECT_ROOT.is_dir():
     app.mount("/static", StaticFiles(directory=str(_PROJECT_ROOT)), name="static")
+
+# TTS 音频输出目录
+_TTS_DIR = os.environ.get("JIANYING_TTS_DIR", "")
+if _TTS_DIR:
+    os.makedirs(_TTS_DIR, exist_ok=True)
 
 _draft_registry: Dict[str, tuple] = {}
 
@@ -284,6 +289,7 @@ class TTSSynthesizeResponse(BaseModel):
     success: bool = Field(True, description="操作是否成功")
     message: str = Field("", description="操作结果消息")
     audio_path: str = Field("", description="音频文件路径")
+    download_url: str = Field("", description="音频下载 URL")
     duration_seconds: float = Field(0.0, description="合成耗时（秒）")
     voice: str = Field("", description="使用的发音人")
 
@@ -506,6 +512,20 @@ def export_draft(draft_id: str):
     """导出草稿为 JSON 字符串"""
     folder, name = _resolve(draft_id)
     return ExportTool.dumps_to_string(folder, name)
+
+@app.get("/drafts/{draft_id}/download", tags=["草稿管理"], summary="下载草稿文件")
+def download_draft(draft_id: str):
+    """下载草稿 JSON 文件（返回 .json 文件流，后续可切 OSS）"""
+    folder, name = _resolve(draft_id)
+    script_path = os.path.join(folder, name, f"{name}.json")
+    if not os.path.exists(script_path):
+        raise HTTPException(404, f"草稿文件不存在: {script_path}")
+    return FileResponse(
+        script_path,
+        media_type="application/json",
+        filename=f"{name}.json",
+        headers={"Content-Disposition": f'attachment; filename="{name}.json"'}
+    )
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 轨道
@@ -853,18 +873,38 @@ def time_format(body: TimeFormat):
 @app.post("/util/tts", tags=["工具"], summary="文本转语音", response_model=TTSSynthesizeResponse)
 def tts_synthesize(body: TTSRequest):
     """将文本合成为语音（Edge-TTS，免费）"""
-    return TTSTool.synthesize(
+    result = TTSTool.synthesize(
         text=body.text,
         voice=body.voice,
         rate=body.rate,
         pitch=body.pitch,
         output_path=body.output_path,
     )
+    # 拼接下载 URL（后续切 OSS 只需改这里的 URL 生成逻辑）
+    if result.get("success") and result.get("audio_path"):
+        fname = os.path.basename(result["audio_path"])
+        result["download_url"] = f"{DEPLOY_URL}/util/tts/download/{fname}"
+    return result
 
 @app.get("/util/tts/voices", tags=["工具"], summary="发音人列表", response_model=TTSVoicesResponse)
 def tts_voices():
     """获取可用的发音人列表"""
     return TTSTool.list_voices()
+
+@app.get("/util/tts/download/{filename}", tags=["工具"], summary="下载 TTS 音频")
+def tts_download(filename: str):
+    """下载 TTS 合成的音频文件（后续可切 OSS 预签名 URL）"""
+    # 安全检查：只允许访问 TTS 目录下的文件
+    safe_name = os.path.basename(filename)  # 防路径穿越
+    file_path = os.path.join(_TTS_DIR, safe_name)
+    if not os.path.isfile(file_path):
+        raise HTTPException(404, f"音频文件不存在: {safe_name}")
+    return FileResponse(
+        file_path,
+        media_type="audio/mpeg",
+        filename=safe_name,
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'}
+    )
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 启动

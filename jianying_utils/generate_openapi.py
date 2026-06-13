@@ -399,10 +399,10 @@ def generate(input_path: str, output_path: str):
 
 
 if __name__ == "__main__":
-    default_input = Path(__file__).parent.parent / "jianying_api_openapi.json"
-    default_output = Path(__file__).parent / "jianying_api_openapi.json"
+    _API_DIR = Path(__file__).parent.parent / "api"
+    default_output = _API_DIR / "openapi.json"
 
-    input_path = default_input
+    input_path = None  # 通常基于 FastAPI 动态输出，这里直接生成到 api/
     output_path = default_output
 
     # Parse args

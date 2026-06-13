@@ -10,14 +10,9 @@
 from __future__ import annotations
 
 import os
-import sys
 import uuid
 from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
-
-_parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _parent not in sys.path:
-    sys.path.insert(0, _parent)
 
 from fastapi import FastAPI, Query, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,14 +30,18 @@ from jianying_utils import (
 from jianying_utils import _context
 
 # ═══════════════════════════════════════════════════════════════════════════
-DRAFTS_DIR = os.environ.get("JIANYING_DRAFTS_DIR", str(Path(__file__).parent / "drafts"))
+# 项目根目录 & 关键路径
+# ═══════════════════════════════════════════════════════════════════════════
+_PROJECT_ROOT = Path(__file__).parent.parent   # 仓库根目录
+_API_DIR = _PROJECT_ROOT / "api"                # OpenAPI 静态文件目录
+
+# 草稿存储目录（可通过环境变量覆盖）
+DRAFTS_DIR = os.environ.get("JIANYING_DRAFTS_DIR", str(_PROJECT_ROOT / "drafts"))
 os.makedirs(DRAFTS_DIR, exist_ok=True)
 
-# ═══════════════════════════════════════════════════════════════════════════
 # 静态 OpenAPI 文件路径
-# ═══════════════════════════════════════════════════════════════════════════
-_OPENAPI_JSON = Path(__file__).parent / "openapi.json"
-_OPENAPI_YAML = Path(__file__).parent / "openapi.yaml"
+_OPENAPI_JSON = _API_DIR / "openapi.json"
+_OPENAPI_YAML = _API_DIR / "openapi.yaml"
 
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -52,7 +51,7 @@ app = FastAPI(
     version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    servers=[{"url": "http://host.docker.internal:8000", "description": "剪映草稿 API 服务器"}],
+    servers=[{"url": "http://localhost:8000", "description": "剪映草稿 API 服务器"}],
     generate_unique_id_function=lambda route: route.name,
 )
 
@@ -92,9 +91,8 @@ app.add_middleware(
 )
 
 # 挂载静态文件目录（Swagger UI 查看器等）
-STATIC_DIR = Path(__file__).parent
-if STATIC_DIR.is_dir():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+if _PROJECT_ROOT.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_PROJECT_ROOT)), name="static")
 
 _draft_registry: Dict[str, tuple] = {}
 
@@ -820,6 +818,9 @@ def time_format(body: TimeFormat):
 
 if __name__ == "__main__":
     import uvicorn
-    print(f"Drafts dir: {DRAFTS_DIR}")
-    print(f"Swagger UI:  http://tianc43.xyz:8000/docs")
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    print(f"Drafts dir:  {DRAFTS_DIR}")
+    print(f"OpenAPI:     http://localhost:8000/openapi.json")
+    print(f"OpenAPI YAML: http://localhost:8000/openapi.yaml")
+    print(f"Swagger UI:  http://localhost:8000/docs")
+    print(f"API docs:    http://localhost:8000/redoc")
+    uvicorn.run("jianying_utils.server:app", host="0.0.0.0", port=8000, reload=True)

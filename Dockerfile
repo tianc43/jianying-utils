@@ -21,8 +21,11 @@ RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制项目代码
-COPY . jianying_utils/
+# 复制项目代码（只复制需要的目录）
+COPY jianying_utils/ jianying_utils/
+COPY api/ api/
+COPY swagger-viewer.html .
+COPY requirements.txt .
 
 # 设置草稿存储目录
 ENV JIANYING_DRAFTS_DIR=/app/drafts

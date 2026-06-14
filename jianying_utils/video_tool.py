@@ -1,8 +1,12 @@
 """视频片段工具 — 添加视频/图片片段、批量添加、片段级效果
 
+支持本地文件路径和远程 URL（自动下载到本地缓存）。
 适用于 Dify 工作流的代码节点。
 """
 
+import hashlib
+import os
+import urllib.request
 from typing import Optional, Dict, Any, List, Union
 
 from pyJianYingDraft import (
@@ -13,7 +17,27 @@ from pyJianYingDraft import (
 from pyJianYingDraft.metadata.mix_mode_meta import MixModeType
 
 from . import _context
+
+# URL 下载缓存目录
+_DOWNLOAD_DIR = os.environ.get("JIANYING_TTS_DIR", "") or os.path.join(
+    os.environ.get("JIANYING_DRAFTS_DIR", os.path.dirname(__file__)), "..", "downloads"
+)
 from .time_tool import TimeTool
+
+
+def _resolve_media_path(media_path: str) -> str:
+    """如果是远程 URL，下载到本地缓存目录并返回本地路径"""
+    if media_path.startswith(("http://", "https://")):
+        url_hash = hashlib.md5(media_path.encode()).hexdigest()[:12]
+        ext = os.path.splitext(media_path.split("?")[0])[1] or ".mp4"
+        local_name = f"dl_{url_hash}{ext}"
+        local_path = os.path.join(_DOWNLOAD_DIR, local_name)
+        if os.path.isfile(local_path):
+            return local_path
+        os.makedirs(_DOWNLOAD_DIR, exist_ok=True)
+        urllib.request.urlretrieve(media_path, local_path)
+        return local_path
+    return media_path
 
 
 class VideoTool:
@@ -56,7 +80,8 @@ class VideoTool:
             start_us = _context_parse_time(start)
             duration_us = _context_parse_time(duration) if duration is not None else None
 
-            # 创建素材
+            # 创建素材（支持 URL 自动下载）
+            video_path = _resolve_media_path(video_path)
             material = VideoMaterial(video_path)
 
             # 计算目标时间范围
@@ -130,7 +155,7 @@ class VideoTool:
             segment_ids = []
 
             for info in video_infos:
-                video_path = info["video_path"]
+                video_path = _resolve_media_path(info["video_path"])
                 start = info["start"]
                 end = info["end"]
                 duration = end - start

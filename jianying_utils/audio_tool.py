@@ -1,13 +1,44 @@
 """音频片段工具 — 添加音频片段、批量添加、音效、淡入淡出
 
+支持本地文件路径和远程 URL（自动下载到本地缓存）。
 适用于 Dify 工作流的代码节点。
 """
 
+import hashlib
+import os
+import urllib.request
 from typing import Optional, Dict, Any, List, Union
 
 from pyJianYingDraft import AudioSegment, AudioMaterial, Timerange
 
 from . import _context
+
+# URL 下载缓存目录（映射到主机 ./data/tts 可持久化）
+_DOWNLOAD_DIR = os.environ.get("JIANYING_TTS_DIR", "") or os.path.join(
+    os.environ.get("JIANYING_DRAFTS_DIR", os.path.dirname(__file__)), "..", "downloads"
+)
+
+
+def _resolve_audio_path(audio_path: str) -> str:
+    """如果是远程 URL，下载到本地缓存目录并返回本地路径；
+    否则直接返回原路径。
+    """
+    if audio_path.startswith(("http://", "https://")):
+        # 用 URL 的 MD5 + 原始扩展名做缓存文件名
+        url_hash = hashlib.md5(audio_path.encode()).hexdigest()[:12]
+        ext = os.path.splitext(audio_path.split("?")[0])[1] or ".mp3"
+        local_name = f"dl_{url_hash}{ext}"
+        local_path = os.path.join(_DOWNLOAD_DIR, local_name)
+
+        # 缓存命中直接返回
+        if os.path.isfile(local_path):
+            return local_path
+
+        os.makedirs(_DOWNLOAD_DIR, exist_ok=True)
+        urllib.request.urlretrieve(audio_path, local_path)
+        return local_path
+
+    return audio_path  # 本地路径直接返回
 
 
 class AudioTool:
@@ -27,7 +58,7 @@ class AudioTool:
         Args:
             folder_path: 草稿根文件夹路径
             draft_name: 草稿名称
-            audio_path: 音频文件路径（mp3, wav 等）
+            audio_path: 音频文件路径或远程 URL（mp3, wav 等）
             start: 起始时间（微秒或时间字符串如 "5s"）
             duration: 持续时间（微秒或时间字符串），不指定则使用素材全长
             speed: 播放速度，默认1.0
@@ -42,6 +73,8 @@ class AudioTool:
         """
         try:
             script = _context.load_script(folder_path, draft_name)
+
+            audio_path = _resolve_audio_path(audio_path)
 
             start_us = _parse_time(start)
             duration_us = _parse_time(duration) if duration is not None else None
@@ -92,7 +125,7 @@ class AudioTool:
             folder_path: 草稿根文件夹路径
             draft_name: 草稿名称
             audio_infos: 音频信息列表，每项包含:
-                - audio_path (str): 音频文件路径（必须）
+                - audio_path (str): 音频文件路径或远程 URL（必须）
                 - start (int): 起始时间微秒（必须）
                 - end (int): 结束时间微秒（必须）
                 - speed (float): 播放速度，默认1.0
@@ -107,7 +140,7 @@ class AudioTool:
             segment_ids = []
 
             for info in audio_infos:
-                audio_path = info["audio_path"]
+                audio_path = _resolve_audio_path(info["audio_path"])
                 start = info["start"]
                 end = info["end"]
                 duration = end - start

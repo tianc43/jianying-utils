@@ -134,7 +134,7 @@ class TrackAdd(BaseModel):
     relative_index: int = Field(0, description="相对图层位置，越大越靠前")
 
 class VideoAdd(BaseModel):
-    video_path: str = Field(..., description="视频/图片文件路径")
+    video_path: str = Field(..., description="视频/图片文件路径或远程 URL")
     start: Union[str, int] = Field(..., description="起始时间（微秒或时间字符串如 5s）")
     duration: Optional[Union[str, int]] = Field(None, description="持续时间")
     speed: float = Field(1.0, description="播放速度")
@@ -151,7 +151,7 @@ class VideoBatch(BaseModel):
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class AudioAdd(BaseModel):
-    audio_path: str = Field(..., description="音频文件路径")
+    audio_path: str = Field(..., description="音频文件路径或远程 URL")
     start: Union[str, int] = Field(..., description="起始时间")
     duration: Optional[Union[str, int]] = Field(None, description="持续时间")
     speed: float = Field(1.0, description="播放速度")

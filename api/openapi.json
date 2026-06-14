@@ -2497,7 +2497,7 @@
           "audio_path": {
             "type": "string",
             "title": "Audio Path",
-            "description": "音频文件路径"
+            "description": "音频文件路径或远程 URL"
           },
           "start": {
             "anyOf": [
@@ -4477,7 +4477,7 @@
           "video_path": {
             "type": "string",
             "title": "Video Path",
-            "description": "视频/图片文件路径"
+            "description": "视频/图片文件路径或远程 URL"
           },
           "start": {
             "anyOf": [

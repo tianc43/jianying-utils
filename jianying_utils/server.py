@@ -583,7 +583,7 @@ def download_draft(draft_id: str):
                     if key in obj and isinstance(obj[key], str):
                         p = obj[key]
                         if os.path.isfile(p) and p not in material_path_map:
-                            material_path_map[p] = f"materials/{os.path.basename(p)}"
+                            material_path_map[p] = os.path.basename(p)
                 for v in obj.values():
                     _collect_paths(v)
             elif isinstance(obj, list):
@@ -616,9 +616,9 @@ def download_draft(draft_id: str):
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         # 写入修改后的 JSON（路径已替换为相对路径）
         zf.writestr("draft_content.json", _json.dumps(draft, ensure_ascii=False, indent=2))
-        # 写入素材文件
+        # 写入素材文件（和 draft_content.json 同级）
         for mp, rel in material_path_map.items():
-            zf.write(mp, rel)
+            zf.write(mp, rel)  # rel 即文件名，放在 ZIP 根目录
         # 其他额外文件
         draft_dir = os.path.dirname(script_path)
         for fname in os.listdir(draft_dir):

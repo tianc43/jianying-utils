@@ -17,7 +17,9 @@ from pathlib import Path
 from fastapi import FastAPI, Query, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import Response, FileResponse
+import zipfile
+import io
+from fastapi.responses import Response, FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 import json as _json
 
@@ -555,18 +557,45 @@ def export_draft(draft_id: str):
     folder, name = _resolve(draft_id)
     return ExportTool.dumps_to_string(folder, name)
 
-@app.get("/drafts/{draft_id}/download", tags=["草稿管理"], summary="下载草稿文件")
+@app.get("/drafts/{draft_id}/download", tags=["草稿管理"], summary="下载草稿文件(ZIP)")
 def download_draft(draft_id: str):
-    """下载草稿 JSON 文件（返回 .json 文件流，后续可切 OSS）"""
+    """下载草稿 ZIP 包（含 draft_content.json + 所有关联素材文件）"""
     folder, name = _resolve(draft_id)
-    script_path = os.path.join(folder, name, f"{name}.json")
-    if not os.path.exists(script_path):
-        raise HTTPException(404, f"草稿文件不存在: {script_path}")
-    return FileResponse(
-        script_path,
-        media_type="application/json",
-        filename=f"{name}.json",
-        headers={"Content-Disposition": f'attachment; filename="{name}.json"'}
+    script_path = os.path.join(folder, name, "draft_content.json")
+    if not os.path.isfile(script_path):
+        raise HTTPException(404, f"草稿文件不存在，请先调用 POST /drafts/{draft_id}/save")
+
+    # 读取 JSON 收集素材路径
+    material_paths = []
+    try:
+        with open(script_path, "r", encoding="utf-8") as f:
+            draft = _json.load(f)
+        for mat in draft.get("materials", {}).values() if isinstance(draft.get("materials"), dict) else draft.get("materials", []):
+            if isinstance(mat, dict):
+                p = mat.get("path", "") or mat.get("local_path", "") or mat.get("url", "")
+                if p and os.path.isfile(p):
+                    material_paths.append(p)
+    except Exception:
+        pass  # 素材收集失败不阻塞下载
+
+    # 构建 ZIP
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(script_path, "draft_content.json")
+        for mp in material_paths:
+            zf.write(mp, os.path.join("materials", os.path.basename(mp)))
+        # 如果草稿目录还有额外文件也打包
+        draft_dir = os.path.dirname(script_path)
+        for fname in os.listdir(draft_dir):
+            fp = os.path.join(draft_dir, fname)
+            if os.path.isfile(fp) and fname != "draft_content.json" and fp not in material_paths:
+                zf.write(fp, fname)
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{name}.zip"'}
     )
 
 # ═══════════════════════════════════════════════════════════════════════════

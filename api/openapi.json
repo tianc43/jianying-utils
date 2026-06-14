@@ -271,8 +271,8 @@
         "tags": [
           "草稿管理"
         ],
-        "summary": "下载草稿文件",
-        "description": "下载草稿 JSON 文件（返回 .json 文件流，后续可切 OSS）",
+        "summary": "下载草稿文件(ZIP)",
+        "description": "下载草稿 ZIP 包（含 draft_content.json + 所有关联素材文件）",
         "operationId": "download_draft",
         "parameters": [
           {

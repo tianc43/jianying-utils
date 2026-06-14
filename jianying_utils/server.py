@@ -107,12 +107,40 @@ _TTS_DIR = os.environ.get("JIANYING_TTS_DIR", "")
 if _TTS_DIR:
     os.makedirs(_TTS_DIR, exist_ok=True)
 
+# 草稿注册表文件（多 worker 共享，通过文件系统同步）
+_REGISTRY_FILE = os.path.join(DRAFTS_DIR, "_draft_registry.json")
+
 _draft_registry: Dict[str, tuple] = {}
 
+def _load_disk_registry() -> Dict[str, list]:
+    """从磁盘加载注册表（处理其他 worker 写入的草稿）"""
+    try:
+        if os.path.exists(_REGISTRY_FILE):
+            with open(_REGISTRY_FILE, "r", encoding="utf-8") as f:
+                return _json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_disk_registry(reg: Dict[str, list]):
+    """持久化注册表到磁盘"""
+    os.makedirs(DRAFTS_DIR, exist_ok=True)
+    with open(_REGISTRY_FILE + ".tmp", "w", encoding="utf-8") as f:
+        _json.dump(reg, f, ensure_ascii=False)
+    os.replace(_REGISTRY_FILE + ".tmp", _REGISTRY_FILE)
+
 def _resolve(draft_id: str) -> tuple:
-    if draft_id not in _draft_registry:
-        raise HTTPException(404, f"草稿不存在: {draft_id}")
-    return _draft_registry[draft_id]
+    """解析 draft_id → (folder, name)，支持多 worker"""
+    # 1) 本地内存缓存
+    if draft_id in _draft_registry:
+        return _draft_registry[draft_id]
+    # 2) 磁盘注册表（其他 worker 创建）
+    disk = _load_disk_registry()
+    if draft_id in disk:
+        folder, name = disk[draft_id]
+        _draft_registry[draft_id] = (folder, name)
+        return (folder, name)
+    raise HTTPException(404, f"草稿不存在: {draft_id}")
 
 def _ok(**kw) -> dict:
     return {"success": True, **kw}
@@ -456,8 +484,9 @@ class TimeFormatResponse(BaseModel):
 @app.get("/health", tags=["系统"], summary="健康检查", response_model=HealthResponse)
 def health():
     """检查服务运行状态"""
+    merged = {**_load_disk_registry(), **_draft_registry}
     return {"success": True, "status": "ok", "version": "0.2.0", "drafts_dir": DRAFTS_DIR,
-            "active_drafts": len(_draft_registry)}
+            "active_drafts": len(merged)}
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 草稿管理
@@ -474,16 +503,20 @@ def create_draft(body: DraftCreate):
     if not result["success"]:
         raise HTTPException(500, result["message"])
     _draft_registry[draft_id] = (DRAFTS_DIR, name)
+    # 同步到磁盘（供其他 worker 查找）
+    _save_disk_registry({**_load_disk_registry(), draft_id: [DRAFTS_DIR, name]})
     return _ok(draft_id=draft_id, draft_name=name,
                draft_folder=result.get("draft_folder"),
                script_path=result.get("script_path"))
 
 @app.get("/drafts", tags=["草稿管理"], summary="列出所有草稿", response_model=DraftsListResponse)
 def list_drafts():
-    """列出当前活跃的所有草稿"""
+    """列出当前活跃的所有草稿（含其他 worker 创建的）"""
+    # 合并磁盘注册表
+    merged = {**_load_disk_registry(), **_draft_registry}
     items = [{"draft_id": did, "draft_name": name,
               "draft_folder": os.path.join(folder, name)}
-             for did, (folder, name) in _draft_registry.items()]
+             for did, (folder, name) in merged.items()]
     return _ok(drafts=items, count=len(items))
 
 @app.get("/drafts/{draft_id}", tags=["草稿管理"], summary="获取草稿信息", response_model=DraftInfoResponse)
@@ -498,6 +531,10 @@ def delete_draft(draft_id: str):
     folder, name = _resolve(draft_id)
     result = DraftManager.remove_draft(folder, name)
     _draft_registry.pop(draft_id, None)
+    # 同步磁盘
+    disk = _load_disk_registry()
+    disk.pop(draft_id, None)
+    _save_disk_registry(disk)
     _context.clear_session(folder, name)
     return result
 

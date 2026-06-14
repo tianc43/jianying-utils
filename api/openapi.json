@@ -40,7 +40,7 @@
           "草稿管理"
         ],
         "summary": "列出所有草稿",
-        "description": "列出当前活跃的所有草稿",
+        "description": "列出当前活跃的所有草稿（含其他 worker 创建的）",
         "operationId": "list_drafts",
         "responses": {
           "200": {

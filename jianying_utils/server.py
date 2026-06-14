@@ -565,26 +565,56 @@ def download_draft(draft_id: str):
     if not os.path.isfile(script_path):
         raise HTTPException(404, f"草稿文件不存在，请先调用 POST /drafts/{draft_id}/save")
 
-    # 读取 JSON 收集素材路径
+    # 读取 JSON，收集素材路径并替换为相对路径
     material_paths = []
+    material_path_map = {}  # 原路径 → ZIP 内相对路径
+    draft = {}
     try:
         with open(script_path, "r", encoding="utf-8") as f:
             draft = _json.load(f)
-        for mat in draft.get("materials", {}).values() if isinstance(draft.get("materials"), dict) else draft.get("materials", []):
-            if isinstance(mat, dict):
-                p = mat.get("path", "") or mat.get("local_path", "") or mat.get("url", "")
-                if p and os.path.isfile(p):
-                    material_paths.append(p)
+        # 遍历 materials，收集本地文件并替换路径
+        mats = draft.get("materials", {})
+        items = mats.values() if isinstance(mats, dict) else (mats if isinstance(mats, list) else [])
+        for mat in items:
+            if not isinstance(mat, dict):
+                continue
+            old_path = mat.get("path", "") or mat.get("local_path", "") or mat.get("url", "")
+            if old_path and os.path.isfile(old_path):
+                rel = f"materials/{os.path.basename(old_path)}"
+                material_paths.append(old_path)
+                material_path_map[old_path] = rel
+                # 替换 material 自身的 path 为相对路径
+                if "path" in mat:
+                    mat["path"] = rel
+                if "local_path" in mat:
+                    mat["local_path"] = rel
+        # 递归替换 JSON 中所有匹配的绝对路径
+        def _replace_paths(obj):
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if isinstance(v, str) and v in material_path_map:
+                        obj[k] = material_path_map[v]
+                    elif isinstance(v, (dict, list)):
+                        _replace_paths(v)
+            elif isinstance(obj, list):
+                for i, v in enumerate(obj):
+                    if isinstance(v, str) and v in material_path_map:
+                        obj[i] = material_path_map[v]
+                    elif isinstance(v, (dict, list)):
+                        _replace_paths(v)
+        _replace_paths(draft)
     except Exception:
-        pass  # 素材收集失败不阻塞下载
+        pass
 
     # 构建 ZIP
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write(script_path, "draft_content.json")
+        # 写入修改后的 JSON（路径已替换为相对路径）
+        zf.writestr("draft_content.json", _json.dumps(draft, ensure_ascii=False, indent=2))
+        # 写入素材文件
         for mp in material_paths:
-            zf.write(mp, os.path.join("materials", os.path.basename(mp)))
-        # 如果草稿目录还有额外文件也打包
+            zf.write(mp, material_path_map[mp])
+        # 其他额外文件
         draft_dir = os.path.dirname(script_path)
         for fname in os.listdir(draft_dir):
             fp = os.path.join(draft_dir, fname)

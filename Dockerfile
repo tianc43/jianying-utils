@@ -37,10 +37,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# 生产环境：gunicorn + uvicorn workers（自动多核、崩溃重启、优雅退出）
-# 本地开发：直接运行 uvicorn jianying_utils.server:app --host 0.0.0.0 --port 8000
+# 单 worker 部署（避免多 worker 间状态竞争）
 CMD ["gunicorn", "jianying_utils.server:app", \
-     "--workers", "4", \
+     "--workers", "1", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--timeout", "120", \

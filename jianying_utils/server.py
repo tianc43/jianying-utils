@@ -384,6 +384,7 @@ class DraftSaveResponse(BaseModel):
     success: bool = Field(True, description="操作是否成功")
     message: str = Field("", description="操作结果消息")
     script_path: str = Field("", description="保存后的脚本文件路径")
+    download_url: str = Field("", description="草稿文件下载 URL")
 
 class DraftExportResponse(BaseModel):
     success: bool = Field(True, description="操作是否成功")
@@ -547,9 +548,11 @@ def delete_draft(draft_id: str):
 
 @app.post("/drafts/{draft_id}/save", tags=["草稿管理"], summary="保存草稿", response_model=DraftSaveResponse)
 def save_draft(draft_id: str):
-    """将草稿写入磁盘"""
+    """将草稿写入磁盘，返回下载 URL"""
     folder, name = _resolve(draft_id)
-    return DraftManager.save_draft(folder, name)
+    result = DraftManager.save_draft(folder, name)
+    result["download_url"] = f"{DEPLOY_URL}/drafts/{draft_id}/download"
+    return result
 
 @app.post("/drafts/{draft_id}/export", tags=["草稿管理"], summary="导出草稿 JSON", response_model=DraftExportResponse)
 def export_draft(draft_id: str):

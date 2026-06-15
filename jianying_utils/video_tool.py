@@ -29,7 +29,7 @@ def _resolve_media_path(media_path: str) -> str:
     """如果是远程 URL，下载到本地缓存目录并返回本地路径"""
     if media_path.startswith(("http://", "https://")):
         url_hash = hashlib.md5(media_path.encode()).hexdigest()[:12]
-        ext = os.path.splitext(media_path.split("?")[0])[1] or ".mp4"
+        ext = os.path.splitext(media_path.split("?")[0])[1] or ".jpg"
         local_name = f"dl_{url_hash}{ext}"
         local_path = os.path.join(_DOWNLOAD_DIR, local_name)
         if os.path.isfile(local_path):

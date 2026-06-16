@@ -185,6 +185,18 @@ def save_script(script: ScriptFile) -> str:
     for name in imported_names & set(script.tracks.keys()):
         saved_tracks[name] = script.tracks.pop(name)
 
+    # ------------------------------------------------------------------
+    # 将素材文件复制到草稿文件夹内，路径改为纯文件名
+    # 确保草稿文件夹自包含，剪映打开时不会"媒体丢失"
+    # ------------------------------------------------------------------
+    draft_dir = os.path.dirname(script.save_path)
+    _relocate_media_to_draft(draft_dir, script.materials.audios, "audio")
+    _relocate_media_to_draft(draft_dir, script.materials.videos, "video")
+    # imported_materials 也会被 dumps() 导出
+    for mat_key in ("audios", "videos"):
+        for mat_dict in script.imported_materials.get(mat_key, []):
+            _relocate_media_dict_to_draft(draft_dir, mat_dict)
+
     script.save()
     # 根据 save_path 推断 (folder, draft_name) 并更新会话
     _cache_by_save_path(script)
@@ -325,6 +337,63 @@ def hex_color_to_rgb(hex_color: str) -> Tuple[float, float, float]:
     g = int(hex_color[2:4], 16) / 255.0
     b = int(hex_color[4:6], 16) / 255.0
     return (r, g, b)
+
+
+# ---------------------------------------------------------------------------
+# 素材文件路径修复 — 保存时将素材复制到草稿文件夹内
+# ---------------------------------------------------------------------------
+
+
+def _relocate_media_to_draft(draft_dir: str, materials, mat_type: str) -> None:
+    """将 script.materials 中的素材文件复制到草稿目录，路径改为纯文件名"""
+    import shutil
+    for mat in materials:
+        if not hasattr(mat, "path"):
+            continue
+        path = mat.path
+        if not path or not os.path.isabs(path):
+            continue
+        # 已在草稿目录内则跳过
+        if _path_is_within(path, draft_dir):
+            continue
+        dest = os.path.join(draft_dir, os.path.basename(path))
+        if not os.path.exists(dest):
+            try:
+                shutil.copy2(path, dest)
+            except Exception:
+                continue  # 跳过无法复制的文件
+        mat.path = os.path.basename(path)
+        mat.material_name = os.path.basename(path)
+
+
+def _relocate_media_dict_to_draft(draft_dir: str, mat_dict: dict) -> None:
+    """将 imported_materials 中的素材路径改为纯文件名并复制文件"""
+    import shutil
+    path = mat_dict.get("path", "")
+    if not path or not os.path.isabs(path):
+        return
+    if _path_is_within(path, draft_dir):
+        return
+    dest = os.path.join(draft_dir, os.path.basename(path))
+    if not os.path.exists(dest):
+        try:
+            shutil.copy2(path, dest)
+        except Exception:
+            return
+    mat_dict["path"] = os.path.basename(path)
+    # 同时更新 name / material_name 字段
+    if "name" in mat_dict:
+        mat_dict["name"] = os.path.basename(path)
+    if "material_name" in mat_dict:
+        mat_dict["material_name"] = os.path.basename(path)
+
+
+def _path_is_within(child: str, parent: str) -> bool:
+    """安全判断 child 是否在 parent 目录下（兼容 Windows 跨盘符）"""
+    try:
+        return os.path.commonpath([parent, child]) == os.path.normpath(parent)
+    except ValueError:
+        return False  # 跨盘符（如 C: 和 D:）视为不在同一目录
 
 
 def make_result(success: bool, message: str = "", **kwargs) -> Dict[str, Any]:

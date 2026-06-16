@@ -107,11 +107,24 @@ class TTSTool:
                 asyncio.run(_run())
 
             elapsed = round(time.time() - start, 2)
+
+            # 获取音频实际时长（非合成耗时）
+            audio_duration_sec = elapsed  # fallback
+            try:
+                from pymediainfo import MediaInfo
+                mi = MediaInfo.parse(output_path)
+                for track in mi.tracks:
+                    if track.track_type == "General" and track.duration:
+                        audio_duration_sec = round(float(track.duration) / 1000.0, 2)
+                        break
+            except Exception:
+                pass  # 使用合成耗时作为 fallback
+
             return _context.make_result(
                 True,
                 f"合成完成 ({elapsed}s)",
                 audio_path=output_path,
-                duration_seconds=elapsed,
+                duration_seconds=audio_duration_sec,
                 voice=voice,
             )
         except ImportError:

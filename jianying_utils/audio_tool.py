@@ -240,9 +240,14 @@ def _parse_time(value):
 
 
 def _find_segment_by_id(script, segment_id):
-    """在所有轨道中查找指定 ID 的片段"""
+    """在所有可编辑轨道和导入轨道中查找指定 ID 的片段"""
     for track in script.tracks.values():
         for seg in track.segments:
             if seg.segment_id == segment_id:
                 return seg
+    # 跨进程/缓存 miss 时片段仅存在于 imported_tracks
+    for imp_track in script.imported_tracks:
+        for seg_data in imp_track.raw_data.get("segments", []):
+            if seg_data.get("id") == segment_id:
+                return None  # 原始数据不可编辑
     return None

@@ -56,8 +56,7 @@ def flush_session(folder_path: str, draft_name: str) -> str:
     key = _session_key(folder_path, draft_name)
     script = _sessions.pop(key, None)
     if script is not None:
-        script.save()
-        return script.save_path
+        return save_script(script)
     return ""
 
 
@@ -74,6 +73,11 @@ def clear_session(folder_path: str, draft_name: str) -> None:
 def load_script(folder_path: str, draft_name: str) -> ScriptFile:
     """从磁盘加载草稿的 ScriptFile 对象（优先使用会话缓存）
 
+    load_template 会将 JSON 中已有的轨道/片段放入 imported_tracks。
+    单次会话内缓存命中时 imported_tracks 为空，script.tracks 包含所有
+    可编辑轨道。跨会话加载时 imported_tracks 包含历史片段，API 需通过
+    add_track 创建同名轨道后继续添加新片段，save_script 会自动合并。
+
     Args:
         folder_path: 草稿根文件夹路径
         draft_name: 草稿名称
@@ -88,8 +92,9 @@ def load_script(folder_path: str, draft_name: str) -> ScriptFile:
     folder = DraftFolder(folder_path)
     script = folder.load_template(draft_name)
 
-    # 将 imported_tracks 重建为 tracks（保留可编辑性）
-    _rebuild_tracks_from_imported(script)
+    # 不再调用 _rebuild_tracks_from_imported：
+    # save_script 会将 script.tracks 新片段合并进 imported_tracks，
+    # 仅创建空壳没有意义（历史片段仍在 imported_tracks 中）。
 
     # 存入会话缓存
     _sessions[key] = script
@@ -97,10 +102,96 @@ def load_script(folder_path: str, draft_name: str) -> ScriptFile:
 
 
 def save_script(script: ScriptFile) -> str:
-    """保存 ScriptFile 到磁盘，同时更新会话缓存"""
+    """保存 ScriptFile 到磁盘（幂等），同时更新会话缓存
+
+    核心策略：将 script.tracks 中的新片段合并到 imported_tracks 中，
+    然后清空 script.tracks。这样无论缓存是否命中，dumps() 都只导出
+    imported_tracks，从根本上避免轨道重复。
+
+    同时修复 pyJianYingDraft 库的两处缺陷：
+    1. TextSegment speed 未加入 materials.speeds
+    2. add_animation 后动画素材未加入 materials.animations（由 animation_tool 自行处理）
+    """
+    from uuid import uuid4
+    from pyJianYingDraft import TextSegment
+    from pyJianYingDraft.template_mode import (
+        import_track, ImportedMediaSegment, ImportedSegment,
+        ImportedMediaTrack, ImportedTextTrack, EditableTrack,
+    )
+
+    # --- 修复 1: 文本片段 speed 素材补全（库缺陷 workaround） ---
+    existing_speed_ids = {s.global_id for s in script.materials.speeds}
+    for track in script.tracks.values():
+        for seg in track.segments:
+            if isinstance(seg, TextSegment):
+                sid = seg.speed.global_id
+                if sid not in existing_speed_ids:
+                    script.materials.speeds.append(seg.speed)
+                    existing_speed_ids.add(sid)
+
+    # --- 核心: 将 script.tracks 新片段合并到 imported_tracks ---
+    for track_name, track in script.tracks.items():
+        if not track.segments:
+            continue  # 空轨道不参与合并
+
+        # 导出片段 dict，并补全 ImportedTrack 构造函数要求的字段
+        new_segs_json = []
+        for seg in track.segments:
+            seg_dict = seg.export_json()
+            if "render_index" not in seg_dict:
+                seg_dict["render_index"] = seg_dict.get("track_render_index", 0)
+            new_segs_json.append(seg_dict)
+
+        # 查找同名的 imported track，追加片段
+        found = False
+        for imp_track in script.imported_tracks:
+            if imp_track.name == track_name:
+                # 更新 raw_data（ImportedTrack.export_json 使用它）
+                imp_track.raw_data.setdefault("segments", []).extend(new_segs_json)
+                # 同时更新 self.segments（EditableTrack.export_json 会覆盖 raw_data）
+                if isinstance(imp_track, ImportedMediaTrack):
+                    imp_track.segments.extend(
+                        ImportedMediaSegment(s) for s in new_segs_json
+                    )
+                elif isinstance(imp_track, ImportedTextTrack):
+                    imp_track.segments.extend(
+                        ImportedSegment(s) for s in new_segs_json
+                    )
+                found = True
+                break
+
+        if not found:
+            # 新建一条 imported track（首次保存或 API 新增了全新轨道）
+            raw_data = {
+                "attribute": 0,
+                "flag": 0,
+                "id": uuid4().hex,
+                "is_default_name": False,
+                "name": track_name,
+                "segments": new_segs_json,
+                "type": track.track_type.name,
+            }
+            imp_track = import_track(raw_data)
+            script.imported_tracks.append(imp_track)
+
+        # 合并后清除片段（内容已迁移到 imported_tracks），
+        # 轨道壳保留供后续 add_segment 使用
+        track.segments.clear()
+
+    # 已合并到 imported_tracks 的轨道：清除片段后暂移出 script.tracks
+    # （避免 dumps() 合并时重复），保存后再恢复空壳供后续 API 调用使用。
+    imported_names = {t.name for t in script.imported_tracks}
+    saved_tracks = {}
+    for name in imported_names & set(script.tracks.keys()):
+        saved_tracks[name] = script.tracks.pop(name)
+
     script.save()
     # 根据 save_path 推断 (folder, draft_name) 并更新会话
     _cache_by_save_path(script)
+
+    # 恢复轨道空壳，供后续 add_segment 使用
+    script.tracks.update(saved_tracks)
+
     return script.save_path
 
 
@@ -117,7 +208,10 @@ def _cache_by_save_path(script: ScriptFile) -> None:
 
 
 def _rebuild_tracks_from_imported(script: ScriptFile) -> None:
-    """从 imported_tracks 重建 tracks dict，使加载的草稿轨道可编辑"""
+    """从 imported_tracks 重建 tracks dict，使加载的草稿轨道可编辑
+
+    注意：只创建尚不存在的轨道，避免覆盖已有（含片段）的轨道。
+    """
     from pyJianYingDraft import TrackType
     from pyJianYingDraft.track import Track
 
@@ -128,8 +222,10 @@ def _rebuild_tracks_from_imported(script: ScriptFile) -> None:
         tt = imp_track.track_type
         if tt == TrackType.adjust:
             continue
-        track = Track(tt, imp_track.name, imp_track.render_index, False)
-        script.tracks[imp_track.name] = track
+        # 不覆盖已存在的同名轨道（可能已包含新添加的片段）
+        if imp_track.name not in script.tracks:
+            track = Track(tt, imp_track.name, imp_track.render_index, False)
+            script.tracks[imp_track.name] = track
 
 
 def create_script(folder_path: str, draft_name: str,

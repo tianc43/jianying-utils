@@ -201,10 +201,19 @@ def _parse_time(value):
 
 
 def _find_segment(script, segment_id):
+    """在可编辑轨道和导入轨道中查找指定 ID 的片段"""
+    # 先搜索可编辑轨道
     for track in script.tracks.values():
         for seg in track.segments:
             if seg.segment_id == segment_id:
                 return seg
+    # 再搜索导入轨道（跨进程/缓存 miss 时片段仅存在于 imported_tracks）
+    for imp_track in script.imported_tracks:
+        for seg_data in imp_track.raw_data.get("segments", []):
+            if seg_data.get("id") == segment_id:
+                # imported_tracks 中的片段是原始 dict，无法直接编辑
+                # 返回 None 表示找到了但不可编辑
+                return None
     return None
 
 
@@ -216,6 +225,14 @@ def _add_video_animation(folder_path, draft_name, segment_id, anim_type, duratio
 
     dur = _parse_time(duration) if duration is not None else None
     segment.add_animation(anim_type, dur)
+
+    # 修复: add_animation 将动画 ID 写入 extra_material_refs，
+    # 但动画素材对象不会自动添加到 materials.animations，
+    # 需在此显式补全，否则产生悬空引用导致剪映无法打开草稿。
+    if (segment.animations_instance is not None
+            and segment.animations_instance not in script.materials):
+        script.materials.animations.append(segment.animations_instance)
+
     _context.save_script(script)
 
     type_name = type(anim_type).__name__
@@ -230,6 +247,12 @@ def _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration
 
     dur = _parse_time(duration) if duration is not None else None
     segment.add_animation(anim_type, dur)
+
+    # 修复: 同视频动画，显式补全动画素材到 materials.animations
+    if (segment.animations_instance is not None
+            and segment.animations_instance not in script.materials):
+        script.materials.animations.append(segment.animations_instance)
+
     _context.save_script(script)
 
     type_name = type(anim_type).__name__

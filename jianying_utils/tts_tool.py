@@ -108,14 +108,15 @@ class TTSTool:
 
             elapsed = round(time.time() - start, 2)
 
-            # 获取音频实际时长（非合成耗时）
+            # 获取音频实际时长（ms 精度），非合成耗时
             audio_duration_sec = elapsed  # fallback
             try:
                 from pymediainfo import MediaInfo
                 mi = MediaInfo.parse(output_path)
                 for track in mi.tracks:
                     if track.track_type == "General" and track.duration:
-                        audio_duration_sec = round(float(track.duration) / 1000.0, 2)
+                        # track.duration 是毫秒，精确除以 1000 保留 3 位小数
+                        audio_duration_sec = round(float(track.duration) / 1000.0, 3)
                         break
             except Exception:
                 pass  # 使用合成耗时作为 fallback

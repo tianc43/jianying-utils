@@ -90,6 +90,10 @@ class VideoTool:
                     duration_us = round(material.duration / speed)
                 else:
                     duration_us = material.duration
+            else:
+                max_dur = round(material.duration / speed) if speed != 1.0 else material.duration
+                if duration_us > max_dur:
+                    duration_us = max_dur
             target_tr = Timerange(start_us, duration_us)
 
             # 素材截取范围

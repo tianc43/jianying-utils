@@ -86,6 +86,11 @@ class AudioTool:
                     duration_us = round(material.duration / speed)
                 else:
                     duration_us = material.duration
+            else:
+                # 用户指定的 duration 超过素材时长时截断（TTS 舍入误差保护）
+                max_dur = round(material.duration / speed) if speed != 1.0 else material.duration
+                if duration_us > max_dur:
+                    duration_us = max_dur
             target_tr = Timerange(start_us, duration_us)
 
             source_tr = None

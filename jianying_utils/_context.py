@@ -11,7 +11,9 @@
 
 import os
 import json
-from typing import Optional, Dict, Any, Tuple
+import re
+import uuid
+from typing import Optional, Dict, Any, Tuple, List
 
 from pyJianYingDraft import DraftFolder, ScriptFile
 
@@ -186,18 +188,24 @@ def save_script(script: ScriptFile) -> str:
         saved_tracks[name] = script.tracks.pop(name)
 
     # ------------------------------------------------------------------
-    # 将素材文件复制到草稿文件夹内，路径改为纯文件名
-    # 确保草稿文件夹自包含，剪映打开时不会"媒体丢失"
+    # 将素材文件复制到草稿文件夹内，路径改为便携相对路径。
+    # 本机 downloader 导入剪映时再改写为本机占位符路径。
     # ------------------------------------------------------------------
     draft_dir = os.path.dirname(script.save_path)
     _relocate_media_to_draft(draft_dir, script.materials.audios, "audio")
     _relocate_media_to_draft(draft_dir, script.materials.videos, "video")
     # imported_materials 也会被 dumps() 导出
     for mat_key in ("audios", "videos"):
+        sub = "audio" if mat_key == "audios" else "video"
         for mat_dict in script.imported_materials.get(mat_key, []):
-            _relocate_media_dict_to_draft(draft_dir, mat_dict)
+            _relocate_media_dict_to_draft(draft_dir, mat_dict, sub)
+
+    draft_name = os.path.basename(draft_dir)
+    if not script.content.get("name"):
+        script.content["name"] = draft_name
 
     script.save()
+    _update_draft_meta_info(script.save_path, script.content)
     # 根据 save_path 推断 (folder, draft_name) 并更新会话
     _cache_by_save_path(script)
 
@@ -345,47 +353,88 @@ def hex_color_to_rgb(hex_color: str) -> Tuple[float, float, float]:
 
 
 def _relocate_media_to_draft(draft_dir: str, materials, mat_type: str) -> None:
-    """将 script.materials 中的素材文件复制到草稿目录，路径改为纯文件名"""
+    """将素材文件复制到草稿内的 audio/ / image/ / video/ 子目录。
+
+    Args:
+        draft_dir: 草稿文件夹路径
+        materials: script.materials.audios 或 script.materials.videos
+        mat_type: \"audio\" 或 \"video\"
+    """
     import shutil
+    sub_dir = os.path.join(draft_dir, mat_type)
     for mat in materials:
+        target_type = _material_subdir(mat_type, mat)
+        sub_dir = os.path.join(draft_dir, target_type)
         if not hasattr(mat, "path"):
             continue
         path = mat.path
-        if not path or not os.path.isabs(path):
+        if not path:
             continue
-        # 已在草稿目录内则跳过
-        if _path_is_within(path, draft_dir):
+
+        placeholder_suffix = _placeholder_suffix(path)
+        if placeholder_suffix:
+            fname = os.path.basename(placeholder_suffix)
+            _copy_existing_placeholder_file(draft_dir, placeholder_suffix, target_type, fname)
+            mat.path = f"{target_type}/{fname}"
             continue
-        dest = os.path.join(draft_dir, os.path.basename(path))
-        if not os.path.exists(dest):
+
+        src = _resolve_material_path(draft_dir, path)
+        if not src or not os.path.isfile(src):
+            continue
+
+        fname = os.path.basename(src)
+        os.makedirs(sub_dir, exist_ok=True)
+        dest = os.path.join(sub_dir, fname)
+        if os.path.abspath(src) != os.path.abspath(dest) and not os.path.exists(dest):
             try:
-                shutil.copy2(path, dest)
+                shutil.copy2(src, dest)
             except Exception:
                 continue  # 跳过无法复制的文件
-        mat.path = os.path.basename(path)
-        mat.material_name = os.path.basename(path)
+        mat.path = f"{target_type}/{fname}"
+        mat.material_name = fname
 
 
-def _relocate_media_dict_to_draft(draft_dir: str, mat_dict: dict) -> None:
-    """将 imported_materials 中的素材路径改为纯文件名并复制文件"""
+def _relocate_media_dict_to_draft(draft_dir: str, mat_dict: dict,
+                                  mat_type: str) -> None:
+    """将 imported_materials 中的素材路径改为便携相对路径并复制文件。
+
+    Args:
+        draft_dir: 草稿文件夹路径
+        mat_dict: imported_materials 中的单个素材字典
+        mat_type: \"audio\" 或 \"video\"
+    """
     import shutil
+    target_type = _material_subdir(mat_type, mat_dict)
     path = mat_dict.get("path", "")
-    if not path or not os.path.isabs(path):
+    if not path:
         return
-    if _path_is_within(path, draft_dir):
+
+    placeholder_suffix = _placeholder_suffix(path)
+    if placeholder_suffix:
+        fname = os.path.basename(placeholder_suffix)
+        _copy_existing_placeholder_file(draft_dir, placeholder_suffix, target_type, fname)
+        mat_dict["path"] = f"{target_type}/{fname}"
         return
-    dest = os.path.join(draft_dir, os.path.basename(path))
-    if not os.path.exists(dest):
+
+    src = _resolve_material_path(draft_dir, path)
+    if not src or not os.path.isfile(src):
+        return
+
+    fname = os.path.basename(src)
+    sub_dir = os.path.join(draft_dir, target_type)
+    os.makedirs(sub_dir, exist_ok=True)
+    dest = os.path.join(sub_dir, fname)
+    if os.path.abspath(src) != os.path.abspath(dest) and not os.path.exists(dest):
         try:
-            shutil.copy2(path, dest)
+            shutil.copy2(src, dest)
         except Exception:
             return
-    mat_dict["path"] = os.path.basename(path)
+    mat_dict["path"] = f"{target_type}/{fname}"
     # 同时更新 name / material_name 字段
     if "name" in mat_dict:
-        mat_dict["name"] = os.path.basename(path)
+        mat_dict["name"] = fname
     if "material_name" in mat_dict:
-        mat_dict["material_name"] = os.path.basename(path)
+        mat_dict["material_name"] = fname
 
 
 def _path_is_within(child: str, parent: str) -> bool:
@@ -394,6 +443,247 @@ def _path_is_within(child: str, parent: str) -> bool:
         return os.path.commonpath([parent, child]) == os.path.normpath(parent)
     except ValueError:
         return False  # 跨盘符（如 C: 和 D:）视为不在同一目录
+
+
+_PLACEHOLDER_RE = re.compile(r"^##_draftpath_placeholder_[^#]+_##[/\\](.+)$")
+
+
+def _get_or_create_draft_placeholder_id(draft_dir: str) -> str:
+    """获取草稿路径占位符 ID。
+
+    剪映的占位符不是任意草稿 ID，而是本机草稿目录里的路径占位符 ID。
+    优先复用已有剪映草稿中的 ID，否则再为当前草稿兜底生成并持久化。
+    """
+    env_value = os.environ.get("JIANYING_DRAFT_PLACEHOLDER_ID", "").strip()
+    if env_value:
+        return env_value
+
+    for root in _candidate_placeholder_roots(draft_dir):
+        detected = _detect_existing_draft_placeholder_id(root)
+        if detected:
+            return detected
+
+    sidecar = os.path.join(draft_dir, ".draft_path_placeholder")
+    try:
+        if os.path.isfile(sidecar):
+            value = open(sidecar, "r", encoding="utf-8").read().strip()
+            if value:
+                return value
+    except Exception:
+        pass
+
+    value = str(uuid.uuid4()).upper()
+    try:
+        with open(sidecar, "w", encoding="utf-8") as f:
+            f.write(value)
+    except Exception:
+        pass
+    return value
+
+
+def _candidate_placeholder_roots(draft_dir: str) -> List[str]:
+    """返回可用于探测剪映占位符 ID 的草稿根目录候选。"""
+    roots = [os.path.dirname(draft_dir)]
+
+    native_root = os.environ.get("JIANYING_NATIVE_DRAFTS_DIR", "").strip()
+    if native_root:
+        roots.append(native_root)
+
+    # Local Windows default used by this project during manual verification.
+    roots.append(r"D:\jianying\JianyingPro Drafts")
+
+    seen = set()
+    result = []
+    for root in roots:
+        norm = os.path.normpath(root) if root else ""
+        if norm and norm not in seen and os.path.isdir(norm):
+            seen.add(norm)
+            result.append(norm)
+    return result
+
+
+def _detect_existing_draft_placeholder_id(drafts_root: str) -> Optional[str]:
+    """从同一剪映草稿根目录中探测本机占位符 ID。"""
+    if not drafts_root or not os.path.isdir(drafts_root):
+        return None
+
+    from collections import Counter
+
+    ids = Counter()
+    try:
+        draft_dirs = [
+            os.path.join(drafts_root, name)
+            for name in os.listdir(drafts_root)
+            if os.path.isdir(os.path.join(drafts_root, name))
+        ]
+    except Exception:
+        return None
+
+    draft_dirs.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    for draft_dir in draft_dirs[:80]:
+        content_path = os.path.join(draft_dir, "draft_content.json")
+        try:
+            with open(content_path, "rb") as f:
+                prefix = f.read(1)
+                if prefix != b"{":
+                    continue
+                f.seek(0)
+                text = f.read().decode("utf-8-sig", errors="ignore")
+        except Exception:
+            continue
+        ids.update(re.findall(r"##_draftpath_placeholder_([^#]+)_##", text))
+
+    if not ids:
+        return None
+    return ids.most_common(1)[0][0]
+
+
+def _placeholder_suffix(path: str) -> Optional[str]:
+    """返回占位符后的相对路径，如 audio/a.mp3；非占位符返回 None。"""
+    match = _PLACEHOLDER_RE.match(path.replace("\\", "/"))
+    if not match:
+        return None
+    return match.group(1).replace("\\", "/")
+
+
+def _make_placeholder_path(draft_uuid: str, suffix: str) -> str:
+    return f"##_draftpath_placeholder_{draft_uuid}_##/{suffix.replace('\\', '/')}"
+
+
+def _resolve_material_path(draft_dir: str, path: str) -> Optional[str]:
+    """将素材路径解析为磁盘文件路径，支持绝对路径和草稿内相对路径。"""
+    if os.path.isabs(path):
+        return path
+    rel = path.replace("/", os.sep).replace("\\", os.sep)
+    return os.path.join(draft_dir, rel)
+
+
+def _material_subdir(mat_type: str, material) -> str:
+    """剪映画稿中图片素材使用 image/，视频素材使用 video/。"""
+    if mat_type != "video":
+        return mat_type
+    material_type = ""
+    if isinstance(material, dict):
+        material_type = str(material.get("type") or material.get("material_type") or "")
+    else:
+        material_type = str(getattr(material, "material_type", ""))
+    return "image" if material_type == "photo" else "video"
+
+
+def _copy_existing_placeholder_file(draft_dir: str, suffix: str,
+                                    target_type: str, fname: str) -> None:
+    """占位符路径已存在但目录不符合类型时，复制到目标目录。"""
+    import shutil
+
+    src = os.path.join(draft_dir, suffix.replace("/", os.sep).replace("\\", os.sep))
+    if not os.path.isfile(src):
+        return
+    sub_dir = os.path.join(draft_dir, target_type)
+    os.makedirs(sub_dir, exist_ok=True)
+    dest = os.path.join(sub_dir, fname)
+    if os.path.abspath(src) != os.path.abspath(dest) and not os.path.exists(dest):
+        shutil.copy2(src, dest)
+
+
+def normalize_draft_media_paths(script_path: str) -> None:
+    """规范化已保存草稿中的素材路径为便携相对路径。"""
+    if not os.path.isfile(script_path):
+        return
+
+    draft_dir = os.path.dirname(script_path)
+    try:
+        with open(script_path, "r", encoding="utf-8-sig") as f:
+            draft = json.load(f)
+    except Exception:
+        return
+
+    changed = False
+    mats = draft.get("materials", {})
+    if isinstance(mats, dict):
+        for mat_key, mat_type in (("audios", "audio"), ("videos", "video")):
+            for mat in mats.get(mat_key, []) if isinstance(mats.get(mat_key), list) else []:
+                if not isinstance(mat, dict):
+                    continue
+                old_path = mat.get("path", "")
+                new_path = _normalize_media_dict_path(draft_dir, mat, mat_type)
+                changed = changed or (new_path != old_path)
+
+    draft_name = os.path.basename(draft_dir)
+    if not draft.get("name"):
+        draft["name"] = draft_name
+        changed = True
+
+    if changed:
+        with open(script_path, "w", encoding="utf-8") as f:
+            json.dump(draft, f, ensure_ascii=False, indent=4)
+    _update_draft_meta_info(script_path, draft)
+
+
+def _normalize_media_dict_path(draft_dir: str, mat_dict: dict,
+                               mat_type: str) -> str:
+    """规范化 draft_content.json 中单个素材字典的 path 字段。"""
+    import shutil
+
+    target_type = _material_subdir(mat_type, mat_dict)
+    path = mat_dict.get("path", "")
+    if not path:
+        return path
+
+    suffix = _placeholder_suffix(path)
+    if suffix:
+        fname = os.path.basename(suffix)
+        _copy_existing_placeholder_file(draft_dir, suffix, target_type, fname)
+        new_path = f"{target_type}/{fname}"
+        mat_dict["path"] = new_path
+        return new_path
+
+    src = _resolve_material_path(draft_dir, path)
+    if not src or not os.path.isfile(src):
+        return path
+
+    fname = os.path.basename(src)
+    sub_dir = os.path.join(draft_dir, target_type)
+    os.makedirs(sub_dir, exist_ok=True)
+    dest = os.path.join(sub_dir, fname)
+    if os.path.abspath(src) != os.path.abspath(dest) and not os.path.exists(dest):
+        shutil.copy2(src, dest)
+
+    new_path = f"{target_type}/{fname}"
+    mat_dict["path"] = new_path
+    if mat_type == "audio" and "name" in mat_dict:
+        mat_dict["name"] = fname
+    if mat_type == "video" and "material_name" in mat_dict:
+        mat_dict["material_name"] = fname
+    return new_path
+
+
+def _update_draft_meta_info(script_path: str, draft: Dict[str, Any]) -> None:
+    """补齐 draft_meta_info.json 中剪映草稿列表和路径解析需要的字段。"""
+    draft_dir = os.path.dirname(script_path)
+    meta_path = os.path.join(draft_dir, "draft_meta_info.json")
+    if not os.path.isfile(meta_path):
+        return
+    try:
+        with open(meta_path, "r", encoding="utf-8-sig") as f:
+            meta = json.load(f)
+    except Exception:
+        return
+
+    draft_name = os.path.basename(draft_dir)
+    drafts_root = os.path.dirname(draft_dir)
+    updates = {
+        "draft_name": draft_name,
+        "draft_fold_path": draft_dir.replace("\\", "/"),
+        "draft_root_path": drafts_root,
+        "tm_duration": int(draft.get("duration") or 0),
+    }
+    if draft.get("id"):
+        updates["draft_id"] = draft["id"]
+    for key, value in updates.items():
+        meta[key] = value
+
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=4)
 
 
 def make_result(success: bool, message: str = "", **kwargs) -> Dict[str, Any]:

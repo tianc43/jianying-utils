@@ -146,6 +146,38 @@ uvicorn jianying_utils.server:app --host 0.0.0.0 --port 8000
 | | `POST /util/tts` | 文本转语音（Edge-TTS） |
 | | `GET /util/tts/voices` | 发音人列表 |
 
+## 本机 Downloader 导入草稿
+
+服务端下载接口返回占位符无关的便携 ZIP 包：素材路径保持为
+`audio/...`、`image/...`、`video/...`。用户本机通过 downloader 导入到剪映草稿目录。
+导入器会扫描本机已有剪映草稿，获取正确的 `##_draftpath_placeholder_xxx_##`，
+并重写 `draft_content.json`、`draft_info.json`、`draft_meta_info.json`。
+
+```powershell
+python -m jianying_utils.downloader install `
+  --url "http://127.0.0.1:18532/drafts/<draft_id>/download" `
+  --drafts-dir "D:\jianying\JianyingPro Drafts"
+```
+
+如果用户机器上还没有任何剪映草稿，先在剪映里创建一个空草稿；或者手动传入：
+
+```powershell
+python -m jianying_utils.downloader install `
+  --url "http://server/drafts/<draft_id>/download" `
+  --drafts-dir "D:\jianying\JianyingPro Drafts" `
+  --placeholder-id "0E685133-18CE-45ED-8CB8-2904A212EC80"
+```
+
+常用参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `--url` | 草稿 ZIP 下载地址，也可以传本地 ZIP 路径 |
+| `--drafts-dir` | 本机剪映草稿目录；不传时会尝试自动查找 |
+| `--draft-name` | 导入后的草稿文件夹名称 |
+| `--placeholder-id` | 手动指定本机剪映占位符 ID |
+| `--overwrite` | 覆盖同名草稿目录 |
+
 ## 统一响应格式
 
 所有端点返回统一的 JSON 结构：

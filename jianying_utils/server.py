@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import uuid
+import re
 from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
 
@@ -562,72 +563,30 @@ def export_draft(draft_id: str):
 
 @app.get("/drafts/{draft_id}/download", tags=["草稿管理"], summary="下载草稿文件(ZIP)")
 def download_draft(draft_id: str):
-    """下载草稿 ZIP 包（含 draft_content.json + 所有关联素材文件）"""
+    """下载占位符无关的便携草稿 ZIP 包（含 JSON + 所有关联素材文件）。"""
     folder, name = _resolve(draft_id)
     script_path = os.path.join(folder, name, "draft_content.json")
     if not os.path.isfile(script_path):
         raise HTTPException(404, f"草稿文件不存在，请先调用 POST /drafts/{draft_id}/save")
 
-    # 读取 JSON，递归收集所有本地文件路径并替换为剪映占位符路径
-    material_path_map = {}  # 原路径 → (ZIP内路径, 占位符路径)
-    placeholder_id = draft_id or uuid.uuid4().hex[:12]
-    draft = {}
-    try:
-        with open(script_path, "r", encoding="utf-8") as f:
-            draft = _json.load(f)
-
-        # 使用 draft 自己的 id 作为 placeholder UUID
-        draft_uuid = draft.get("id", str(uuid.uuid4()).upper())
-
-        # 通过 materials 子 key 分类收集
-        mats = draft.get("materials", {})
-        if isinstance(mats, dict):
-            for mat_key in mats:
-                sub = "audio" if mat_key == "audios" else "video" if mat_key == "videos" else None
-                if sub:
-                    for mat in (mats[mat_key] if isinstance(mats[mat_key], list) else []):
-                        if isinstance(mat, dict):
-                            for pk in ("path", "local_path"):
-                                if pk in mat and isinstance(mat[pk], str):
-                                    p = mat[pk]
-                                    if os.path.isfile(p) and p not in material_path_map:
-                                        fname = os.path.basename(p)
-                                        material_path_map[p] = (
-                                            f"{sub}/{fname}",
-                                            f"##_draftpath_placeholder_{draft_uuid}_##/{sub}/{fname}"
-                                        )
-        # 递归替换 JSON 中所有绝对路径为占位符
-        def _replace_paths(obj):
-            if isinstance(obj, dict):
-                for k, v in obj.items():
-                    if isinstance(v, str) and v in material_path_map:
-                        obj[k] = material_path_map[v][1]  # 替换为占位符路径
-                    elif isinstance(v, (dict, list)):
-                        _replace_paths(v)
-            elif isinstance(obj, list):
-                for i, v in enumerate(obj):
-                    if isinstance(v, str) and v in material_path_map:
-                        obj[i] = material_path_map[v][1]
-                    elif isinstance(v, (dict, list)):
-                        _replace_paths(v)
-        _replace_paths(draft)
-    except Exception:
-        pass
+    # 下载前仍确保素材文件已被复制到 audio/ / video/ / image/ 子目录；
+    # ZIP 内的 JSON 会被转换为相对路径，不泄漏服务端/本机占位符。
+    _context.normalize_draft_media_paths(script_path)
 
     # 构建 ZIP
     buf = io.BytesIO()
+    draft_dir = os.path.dirname(script_path)
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        # 写入修改后的 JSON（路径已替换为占位符）
-        zf.writestr("draft_content.json", _json.dumps(draft, ensure_ascii=False, indent=2))
-        # 写入素材文件到 audio/ 或 video/ 子目录
-        for mp, (zip_path, _) in material_path_map.items():
-            zf.write(mp, zip_path)
-        # 其他额外文件
-        draft_dir = os.path.dirname(script_path)
-        for fname in os.listdir(draft_dir):
-            fp = os.path.join(draft_dir, fname)
-            if os.path.isfile(fp) and fname != "draft_content.json" and fp not in material_path_map:
-                zf.write(fp, fname)
+        for root, dirs, files in os.walk(draft_dir):
+            for fname in files:
+                if fname == ".draft_path_placeholder":
+                    continue
+                fp = os.path.join(root, fname)
+                arcname = os.path.relpath(fp, draft_dir).replace("\\", "/")
+                if _is_draft_json_file(fname):
+                    zf.writestr(arcname, _portable_json_file(fp, draft_dir, name))
+                else:
+                    zf.write(fp, arcname)
 
     buf.seek(0)
     return StreamingResponse(
@@ -635,6 +594,70 @@ def download_draft(draft_id: str):
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{name}.zip"'}
     )
+
+
+_DRAFT_PLACEHOLDER_RE = re.compile(r"^##_draftpath_placeholder_[^#]+_##[/\\](.+)$")
+
+
+def _is_draft_json_file(filename: str) -> bool:
+    return (
+        filename in {
+            "draft_content.json",
+            "draft_info.json",
+            "draft_meta_info.json",
+            "attachment_pc_common.json",
+            "draft_agency_config.json",
+        }
+        or filename.startswith("template")
+        and filename.endswith(".tmp")
+    )
+
+
+def _portable_json_file(path: str, draft_dir: str, draft_name: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            data = _json.load(f)
+    except Exception:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+
+    data = _make_portable_json(data, draft_dir, draft_name)
+    return _json.dumps(data, ensure_ascii=False, indent=4)
+
+
+def _make_portable_json(obj: Any, draft_dir: str, draft_name: str) -> Any:
+    if isinstance(obj, dict):
+        result = {}
+        for key, value in obj.items():
+            if key in {"draft_fold_path", "draft_root_path"} and isinstance(value, str):
+                result[key] = ""
+            elif key == "draft_name" and isinstance(value, str):
+                result[key] = draft_name
+            elif key == "name" and isinstance(value, str) and not value:
+                result[key] = draft_name
+            else:
+                result[key] = _make_portable_json(value, draft_dir, draft_name)
+        return result
+    if isinstance(obj, list):
+        return [_make_portable_json(value, draft_dir, draft_name) for value in obj]
+    if isinstance(obj, str):
+        return _portable_material_path(obj, draft_dir)
+    return obj
+
+
+def _portable_material_path(value: str, draft_dir: str) -> str:
+    match = _DRAFT_PLACEHOLDER_RE.match(value.replace("\\", "/"))
+    if match:
+        return match.group(1).replace("\\", "/")
+
+    if os.path.isabs(value):
+        try:
+            rel = os.path.relpath(value, draft_dir)
+        except ValueError:
+            return value
+        if not rel.startswith(".."):
+            return rel.replace("\\", "/")
+    return value
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 轨道

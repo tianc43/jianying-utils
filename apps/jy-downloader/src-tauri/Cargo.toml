@@ -1,0 +1,25 @@
+[package]
+name = "jy-downloader"
+version = "0.1.0"
+description = "Local Jianying draft downloader"
+authors = ["jianying-utils"]
+edition = "2021"
+
+[lib]
+name = "jy_downloader_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+dirs = "6"
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tempfile = "3"
+thiserror = "2"
+walkdir = "2"
+zip = "2"

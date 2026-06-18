@@ -1,0 +1,78 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f5f7fa;
+  color: #1f2933;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.panel {
+  background: #ffffff;
+}
+
+.log-panel {
+  min-height: 260px;
+}
+
+.icon-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #4b5563;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: #0f766e;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.log-line {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  overflow-wrap: anywhere;
+}
+
+.log-success {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.log-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 820px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}

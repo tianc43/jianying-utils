@@ -21,9 +21,18 @@ env/
 # Drafts (runtime data)
 drafts/
 
+data/
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend / Tauri build outputs
+node_modules/
+apps/**/node_modules/
+apps/**/dist/
+apps/**/src-tauri/target/
+apps/**/src-tauri/gen/
 
 # Environment
 .env

@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any
 from pyJianYingDraft import VideoMaterial, AudioMaterial, CropSettings
 
 from . import _context
+from .material_path import resolve_material_path
 
 
 class MaterialTool:
@@ -25,6 +26,7 @@ class MaterialTool:
             dict: {"success": bool, "duration": int, "width": int, "height": int, "type": str}
         """
         try:
+            path = resolve_material_path(path, ".jpg", "image/*,video/*;q=0.9,*/*;q=0.8")
             mat = VideoMaterial(path)
             return _context.make_result(
                 True,
@@ -50,6 +52,7 @@ class MaterialTool:
             dict: {"success": bool, "duration": int, "duration_seconds": float}
         """
         try:
+            path = resolve_material_path(path, ".mp3", "audio/mpeg,audio/*;q=0.9,*/*;q=0.8")
             mat = AudioMaterial(path)
             duration_sec = mat.duration / 1_000_000.0
             return _context.make_result(

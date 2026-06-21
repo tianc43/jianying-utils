@@ -4,41 +4,16 @@
 适用于 Dify 工作流的代码节点。
 """
 
-import hashlib
-import os
-import urllib.request
 from typing import Optional, Dict, Any, List, Union
 
 from pyJianYingDraft import AudioSegment, AudioMaterial, Timerange
 
 from . import _context
-
-# URL 下载缓存目录（映射到主机 ./data/tts 可持久化）
-_DOWNLOAD_DIR = os.environ.get("JIANYING_TTS_DIR", "") or os.path.join(
-    os.environ.get("JIANYING_DRAFTS_DIR", os.path.dirname(__file__)), "..", "downloads"
-)
+from .material_path import resolve_material_path
 
 
 def _resolve_audio_path(audio_path: str) -> str:
-    """如果是远程 URL，下载到本地缓存目录并返回本地路径；
-    否则直接返回原路径。
-    """
-    if audio_path.startswith(("http://", "https://")):
-        # 用 URL 的 MD5 + 原始扩展名做缓存文件名
-        url_hash = hashlib.md5(audio_path.encode()).hexdigest()[:12]
-        ext = os.path.splitext(audio_path.split("?")[0])[1] or ".mp3"
-        local_name = f"dl_{url_hash}{ext}"
-        local_path = os.path.join(_DOWNLOAD_DIR, local_name)
-
-        # 缓存命中直接返回
-        if os.path.isfile(local_path):
-            return local_path
-
-        os.makedirs(_DOWNLOAD_DIR, exist_ok=True)
-        urllib.request.urlretrieve(audio_path, local_path)
-        return local_path
-
-    return audio_path  # 本地路径直接返回
+    return resolve_material_path(audio_path, ".mp3", "audio/mpeg,audio/*;q=0.9,*/*;q=0.8")
 
 
 class AudioTool:

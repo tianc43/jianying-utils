@@ -4,9 +4,6 @@
 适用于 Dify 工作流的代码节点。
 """
 
-import hashlib
-import os
-import urllib.request
 from typing import Optional, Dict, Any, List, Union
 
 from pyJianYingDraft import (
@@ -17,11 +14,7 @@ from pyJianYingDraft import (
 from pyJianYingDraft.metadata.mix_mode_meta import MixModeType
 
 from . import _context
-
-# URL 下载缓存目录
-_DOWNLOAD_DIR = os.environ.get("JIANYING_TTS_DIR", "") or os.path.join(
-    os.environ.get("JIANYING_DRAFTS_DIR", os.path.dirname(__file__)), "..", "downloads"
-)
+from .material_path import resolve_material_path
 from .time_tool import TimeTool
 
 _CLIP_SETTING_KEYS = {
@@ -38,18 +31,7 @@ _ROUND_CORNER_KEYS = ("round_corner", "corner_radius", "border_radius", "radius"
 
 
 def _resolve_media_path(media_path: str) -> str:
-    """如果是远程 URL，下载到本地缓存目录并返回本地路径"""
-    if media_path.startswith(("http://", "https://")):
-        url_hash = hashlib.md5(media_path.encode()).hexdigest()[:12]
-        ext = os.path.splitext(media_path.split("?")[0])[1] or ".jpg"
-        local_name = f"dl_{url_hash}{ext}"
-        local_path = os.path.join(_DOWNLOAD_DIR, local_name)
-        if os.path.isfile(local_path):
-            return local_path
-        os.makedirs(_DOWNLOAD_DIR, exist_ok=True)
-        urllib.request.urlretrieve(media_path, local_path)
-        return local_path
-    return media_path
+    return resolve_material_path(media_path, ".jpg", "image/*,video/*;q=0.9,*/*;q=0.8")
 
 
 class VideoTool:

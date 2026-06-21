@@ -3,6 +3,8 @@
 适用于 Dify 工作流的代码节点。
 """
 
+import os
+import urllib.parse
 from typing import Optional, Dict, Any, List, Union
 
 from pyJianYingDraft import (
@@ -11,6 +13,7 @@ from pyJianYingDraft import (
 )
 
 from . import _context
+from .material_path import resolve_material_path
 
 
 # 缩短/延长模式映射
@@ -170,25 +173,28 @@ class TemplateTool:
             dict: {"success": bool}
         """
         try:
-            import os
             script = _context.load_script(folder_path, draft_name)
 
             # 判断是视频还是音频（根据扩展名初步判断）
-            ext = os.path.splitext(new_material_path)[1].lower()
+            parsed_path = urllib.parse.urlparse(new_material_path).path
+            ext_source = urllib.parse.unquote(parsed_path or new_material_path)
+            ext = os.path.splitext(ext_source)[1].lower()
             video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.gif', '.jpg', '.jpeg', '.png', '.bmp', '.webp'}
             audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
 
             if ext in video_exts:
-                material = VideoMaterial(new_material_path)
+                resolved_path = resolve_material_path(new_material_path, ".jpg", "image/*,video/*;q=0.9,*/*;q=0.8")
+                material = VideoMaterial(resolved_path)
             elif ext in audio_exts:
-                material = AudioMaterial(new_material_path)
+                resolved_path = resolve_material_path(new_material_path, ".mp3", "audio/mpeg,audio/*;q=0.9,*/*;q=0.8")
+                material = AudioMaterial(resolved_path)
             else:
                 return _context.make_result(False, f"不支持的素材格式: {ext}")
 
             script.replace_material_by_name(material_name, material, replace_crop=replace_crop)
             _context.save_script(script)
 
-            return _context.make_result(True, f"素材 '{material_name}' 已替换为 {os.path.basename(new_material_path)}")
+            return _context.make_result(True, f"素材 '{material_name}' 已替换为 {os.path.basename(resolved_path)}")
         except Exception as e:
             return _context.make_result(False, f"替换素材失败: {e}")
 

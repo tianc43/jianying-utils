@@ -869,6 +869,7 @@ def workflow_simple(draft_id: str, body: SimpleWorkflow):
         VideoMaterial, AudioMaterial, Timerange, ClipSettings,
         TextStyle, TextBorder, tim
     )
+    from jianying_utils.material_path import resolve_material_path
 
     script = _context.get_script(folder, name)
     if not script:
@@ -876,14 +877,16 @@ def workflow_simple(draft_id: str, body: SimpleWorkflow):
         script = folder_obj.load_template(name)
         _context.commit_script(script, folder, name)
 
-    if body.video_path and os.path.exists(body.video_path):
+    video_path = resolve_material_path(body.video_path, ".jpg", "image/*,video/*;q=0.9,*/*;q=0.8") if body.video_path else ""
+    if video_path and os.path.exists(video_path):
         script.add_track(TrackType.video)
-        mat = VideoMaterial(body.video_path)
+        mat = VideoMaterial(video_path)
         script.add_segment(VideoSegment(mat, Timerange(0, mat.duration)))
 
-    if body.audio_path and os.path.exists(body.audio_path):
+    audio_path = resolve_material_path(body.audio_path, ".mp3", "audio/mpeg,audio/*;q=0.9,*/*;q=0.8") if body.audio_path else ""
+    if audio_path and os.path.exists(audio_path):
         script.add_track(TrackType.audio)
-        mat = AudioMaterial(body.audio_path)
+        mat = AudioMaterial(audio_path)
         dur = min(mat.duration, script.duration or mat.duration)
         seg = AudioSegment(mat, Timerange(0, dur), volume=0.5)
         seg.add_fade("1s", "2s")

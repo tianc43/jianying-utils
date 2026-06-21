@@ -212,10 +212,8 @@ def _context_parse_time(value):
     """解析时间值"""
     if value is None:
         return None
-    from pyJianYingDraft import tim
-    if isinstance(value, str):
-        return tim(value)
-    return int(round(value))
+    from .time_tool import parse_time_value
+    return parse_time_value(value)
 
 
 def _extract_clip_settings(info: Dict[str, Any]) -> Dict[str, Any]:

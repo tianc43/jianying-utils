@@ -77,5 +77,5 @@ class StickerTool:
 def _parse_time(value):
     if value is None:
         return None
-    from pyJianYingDraft import tim
-    return tim(value) if isinstance(value, str) else int(round(value))
+    from .time_tool import parse_time_value
+    return parse_time_value(value)

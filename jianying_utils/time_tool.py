@@ -3,9 +3,23 @@
 适用于 Dify 工作流的代码节点。
 """
 
+import re
 from typing import Union, Dict, Any
 
 from pyJianYingDraft import tim, trange, SEC
+
+
+_NUMERIC_RE = re.compile(r"^[+-]?\d+(?:\.\d+)?$")
+
+
+def parse_time_value(value: Union[str, float, int]) -> int:
+    """将时间值转换为微秒；纯数字字符串按微秒处理，带单位字符串按 tim() 处理。"""
+    if isinstance(value, str):
+        stripped = value.strip()
+        if _NUMERIC_RE.fullmatch(stripped):
+            return int(round(float(stripped)))
+        return tim(stripped)
+    return int(round(value))
 
 
 class TimeTool:
@@ -34,7 +48,7 @@ class TimeTool:
         Returns:
             dict: {"success": True, "microseconds": int, "message": str}
         """
-        result = tim(time_input)
+        result = parse_time_value(time_input)
         return {"success": True, "microseconds": result, "message": "时间解析成功"}
 
     @staticmethod
@@ -104,8 +118,7 @@ class TimeTool:
         Returns:
             dict: {"start": int, "duration": int} 单位微秒
         """
-        tr = trange(start, duration)
-        return {"start": tr.start, "duration": tr.duration}
+        return {"start": parse_time_value(start), "duration": parse_time_value(duration)}
 
     @staticmethod
     def timerange_from_start_end(start: Union[str, float], end: Union[str, float]) -> Dict[str, int]:
@@ -118,8 +131,8 @@ class TimeTool:
         Returns:
             dict: {"start": int, "duration": int} 单位微秒
         """
-        s = tim(start)
-        e = tim(end)
+        s = parse_time_value(start)
+        e = parse_time_value(end)
         if e < s:
             raise ValueError(f"结束时间 ({e}) 不能小于起始时间 ({s})")
         return {"start": s, "duration": e - s}

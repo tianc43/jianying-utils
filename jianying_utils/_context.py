@@ -489,9 +489,6 @@ def _candidate_placeholder_roots(draft_dir: str) -> List[str]:
     if native_root:
         roots.append(native_root)
 
-    # Local Windows default used by this project during manual verification.
-    roots.append(r"D:\jianying\JianyingPro Drafts")
-
     seen = set()
     result = []
     for root in roots:

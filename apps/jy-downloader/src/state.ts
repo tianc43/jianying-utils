@@ -21,6 +21,14 @@ export interface InstallStep {
   level: LogLevel;
 }
 
+export interface InstallProgress {
+  step: string;
+  bytesRead: number;
+  totalBytes: number | null;
+  percent: number | null;
+  message: string;
+}
+
 export const sourceAtom = atom("");
 export const sourceModeAtom = atom<SourceMode>("url");
 export const draftsDirAtom = atom("");
@@ -31,6 +39,7 @@ export const installingAtom = atom(false);
 export const resultAtom = atom<InstallResult | null>(null);
 export const logsAtom = atom<LogEntry[]>([]);
 export const currentStepAtom = atom<InstallStep | null>(null);
+export const progressAtom = atom<InstallProgress | null>(null);
 
 export const canInstallAtom = atom((get) => {
   const source = get(sourceAtom).trim();
@@ -51,8 +60,13 @@ export const setCurrentStepAtom = atom(null, (_get, set, step: InstallStep | nul
   set(currentStepAtom, step);
 });
 
+export const setProgressAtom = atom(null, (_get, set, progress: InstallProgress | null) => {
+  set(progressAtom, progress);
+});
+
 export const clearRunStateAtom = atom(null, (_get, set) => {
   set(resultAtom, null);
   set(logsAtom, []);
   set(currentStepAtom, null);
+  set(progressAtom, null);
 });

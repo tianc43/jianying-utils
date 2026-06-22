@@ -4,7 +4,7 @@ info:
   description: 剪映草稿自动化 — 独立部署 REST API
   version: 0.2.0
 servers:
-- url: https://tianc43.xyz/jianying-utils
+- url: /
   description: 剪映草稿 API 服务器
 paths:
   /health:
@@ -16,7 +16,7 @@ paths:
       operationId: health
       responses:
         '200':
-          description: Successful Response
+          description: 服务健康状态
           content:
             application/json:
               schema:
@@ -30,7 +30,7 @@ paths:
       operationId: list_drafts
       responses:
         '200':
-          description: Successful Response
+          description: 活跃草稿列表
           content:
             application/json:
               schema:
@@ -49,7 +49,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Successful Response
+          description: 草稿创建成功，返回 draft_id
           content:
             application/json:
               schema:
@@ -76,7 +76,7 @@ paths:
           title: Draft Id
       responses:
         '200':
-          description: Successful Response
+          description: 草稿详细信息（尺寸、时长、帧率等）
           content:
             application/json:
               schema:
@@ -102,7 +102,7 @@ paths:
           title: Draft Id
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -156,7 +156,7 @@ paths:
           title: Draft Id
       responses:
         '200':
-          description: Successful Response
+          description: 草稿 JSON 导出
           content:
             application/json:
               schema:
@@ -172,7 +172,7 @@ paths:
       tags:
       - 草稿管理
       summary: 下载草稿文件(ZIP)
-      description: 下载草稿 ZIP 包（含 draft_content.json + 所有关联素材文件）
+      description: 下载占位符无关的便携草稿 ZIP 包（含 JSON + 所有关联素材文件）。
       operationId: download_draft
       parameters:
       - name: draft_id
@@ -215,7 +215,7 @@ paths:
               $ref: '#/components/schemas/TrackAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 轨道添加成功
           content:
             application/json:
               schema:
@@ -241,7 +241,7 @@ paths:
           title: Draft Id
       responses:
         '200':
-          description: Successful Response
+          description: 轨道列表
           content:
             application/json:
               schema:
@@ -274,7 +274,7 @@ paths:
               $ref: '#/components/schemas/VideoAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 片段添加成功，返回 segment_id
           content:
             application/json:
               schema:
@@ -307,7 +307,7 @@ paths:
               $ref: '#/components/schemas/VideoBatch'
       responses:
         '200':
-          description: Successful Response
+          description: 批量操作成功
           content:
             application/json:
               schema:
@@ -340,7 +340,7 @@ paths:
               $ref: '#/components/schemas/AudioAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 片段添加成功，返回 segment_id
           content:
             application/json:
               schema:
@@ -373,7 +373,7 @@ paths:
               $ref: '#/components/schemas/AudioBatch'
       responses:
         '200':
-          description: Successful Response
+          description: 批量操作成功
           content:
             application/json:
               schema:
@@ -406,7 +406,7 @@ paths:
               $ref: '#/components/schemas/AudioFade'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -439,7 +439,7 @@ paths:
               $ref: '#/components/schemas/TextAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 片段添加成功，返回 segment_id
           content:
             application/json:
               schema:
@@ -472,7 +472,7 @@ paths:
               $ref: '#/components/schemas/CaptionsAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 批量操作成功
           content:
             application/json:
               schema:
@@ -505,7 +505,7 @@ paths:
               $ref: '#/components/schemas/EffectAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -538,7 +538,7 @@ paths:
               $ref: '#/components/schemas/EffectAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -571,7 +571,7 @@ paths:
               $ref: '#/components/schemas/FilterAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -604,7 +604,7 @@ paths:
               $ref: '#/components/schemas/EffectBatch'
       responses:
         '200':
-          description: Successful Response
+          description: 批量操作成功
           content:
             application/json:
               schema:
@@ -637,7 +637,7 @@ paths:
               $ref: '#/components/schemas/StickerAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 片段添加成功，返回 segment_id
           content:
             application/json:
               schema:
@@ -670,7 +670,7 @@ paths:
               $ref: '#/components/schemas/AnimationAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -703,7 +703,7 @@ paths:
               $ref: '#/components/schemas/AnimationAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -736,7 +736,7 @@ paths:
               $ref: '#/components/schemas/AnimationAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -769,7 +769,7 @@ paths:
               $ref: '#/components/schemas/AnimationAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -802,7 +802,7 @@ paths:
               $ref: '#/components/schemas/AnimationAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -835,7 +835,7 @@ paths:
               $ref: '#/components/schemas/AnimationAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -868,7 +868,7 @@ paths:
               $ref: '#/components/schemas/KeyframeAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -901,7 +901,7 @@ paths:
               $ref: '#/components/schemas/KeyframeBatch'
       responses:
         '200':
-          description: Successful Response
+          description: 批量操作成功
           content:
             application/json:
               schema:
@@ -934,7 +934,7 @@ paths:
               $ref: '#/components/schemas/TransitionAdd'
       responses:
         '200':
-          description: Successful Response
+          description: 操作成功
           content:
             application/json:
               schema:
@@ -967,7 +967,7 @@ paths:
               $ref: '#/components/schemas/TransitionBatch'
       responses:
         '200':
-          description: Successful Response
+          description: 批量操作成功
           content:
             application/json:
               schema:
@@ -1000,7 +1000,7 @@ paths:
               $ref: '#/components/schemas/SimpleWorkflow'
       responses:
         '200':
-          description: Successful Response
+          description: 一键创建完成
           content:
             application/json:
               schema:
@@ -1028,7 +1028,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1055,7 +1055,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1082,7 +1082,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1101,7 +1101,7 @@ paths:
       operationId: metadata_masks
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1114,7 +1114,7 @@ paths:
       operationId: metadata_mix_modes
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1135,7 +1135,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1162,7 +1162,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1189,7 +1189,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1216,7 +1216,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1243,7 +1243,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1270,7 +1270,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1297,7 +1297,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1324,7 +1324,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1351,7 +1351,7 @@ paths:
           title: Mode
       responses:
         '200':
-          description: Successful Response
+          description: 元数据查询结果
           content:
             application/json:
               schema:
@@ -1378,7 +1378,7 @@ paths:
           title: Path
       responses:
         '200':
-          description: Successful Response
+          description: 视频/图片素材信息
           content:
             application/json:
               schema:
@@ -1405,7 +1405,7 @@ paths:
           title: Path
       responses:
         '200':
-          description: Successful Response
+          description: 音频时长信息
           content:
             application/json:
               schema:
@@ -1431,7 +1431,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Successful Response
+          description: 时间解析结果
           content:
             application/json:
               schema:
@@ -1457,7 +1457,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Successful Response
+          description: 时间格式化结果
           content:
             application/json:
               schema:
@@ -1642,30 +1642,23 @@ components:
       - out_duration
       title: AudioFade
     BatchResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         count:
           type: integer
-          title: Count
           description: 添加的片段数量
-          default: 0
         segment_ids:
+          type: array
           items:
             type: string
-          type: array
-          title: Segment Ids
           description: 新创建片段的 ID 列表
-      type: object
-      title: BatchResponse
+      additionalProperties: false
     CaptionItem:
       properties:
         text:
@@ -1823,123 +1816,75 @@ components:
       type: object
       title: DraftCreate
     DraftCreateResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         draft_id:
           type: string
-          title: Draft Id
           description: 草稿唯一 ID（12 位 hex）
+          example: ac51f93630c2
         draft_name:
           type: string
-          title: Draft Name
           description: 草稿名称
         draft_folder:
           type: string
-          title: Draft Folder
           description: 草稿文件夹路径
         script_path:
           type: string
-          title: Script Path
           description: 草稿脚本文件路径
-        download_url:
-          type: string
-          title: Download Url
-          description: 草稿文件下载 URL
-          default: ''
-      type: object
-      required:
-      - draft_id
-      - draft_name
-      - draft_folder
-      - script_path
-      title: DraftCreateResponse
+      additionalProperties: false
     DraftExportResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         json_string:
           type: string
-          title: Json String
           description: 草稿 JSON 字符串
-          default: ''
         draft_name:
           type: string
-          title: Draft Name
           description: 草稿名称
-          default: ''
-      type: object
-      title: DraftExportResponse
+      additionalProperties: false
     DraftInfoResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         draft_folder:
           type: string
-          title: Draft Folder
           description: 草稿文件夹路径
-          default: ''
         draft_name:
           type: string
-          title: Draft Name
           description: 草稿名称
-          default: ''
         script_path:
           type: string
-          title: Script Path
           description: 草稿脚本文件路径
-          default: ''
         width:
           type: integer
-          title: Width
           description: 视频宽度
-          default: 0
         height:
           type: integer
-          title: Height
           description: 视频高度
-          default: 0
         fps:
           type: integer
-          title: Fps
           description: 帧率
-          default: 0
         duration:
           type: integer
-          title: Duration
           description: 草稿总时长（微秒）
-          default: 0
-        download_url:
-          type: string
-          title: Download Url
-          description: 草稿文件下载 URL
-          default: ''
-      type: object
-      title: DraftInfoResponse
+      additionalProperties: false
     DraftItem:
       properties:
         draft_id:
@@ -1961,54 +1906,42 @@ components:
       - draft_folder
       title: DraftItem
     DraftSaveResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         script_path:
           type: string
-          title: Script Path
           description: 保存后的脚本文件路径
-          default: ''
-        download_url:
-          type: string
-          title: Download Url
-          description: 草稿文件下载 URL
-          default: ''
-      type: object
-      title: DraftSaveResponse
+      additionalProperties: false
     DraftsListResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         drafts:
-          items:
-            $ref: '#/components/schemas/DraftItem'
           type: array
-          title: Drafts
-          description: 草稿列表
+          items:
+            type: object
+            properties:
+              draft_id:
+                type: string
+              draft_name:
+                type: string
+              draft_folder:
+                type: string
         count:
           type: integer
-          title: Count
           description: 草稿总数
-          default: 0
-      type: object
-      title: DraftsListResponse
+      additionalProperties: false
     EffectAdd:
       properties:
         effect_name:
@@ -2102,19 +2035,16 @@ components:
       - duration
       title: FilterAdd
     GenericSuccessResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
           default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
-      type: object
-      title: GenericSuccessResponse
+      additionalProperties: false
     HTTPValidationError:
       properties:
         detail:
@@ -2125,35 +2055,26 @@ components:
       type: object
       title: HTTPValidationError
     HealthResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         status:
           type: string
-          title: Status
           description: 服务状态
-          default: ok
+          example: ok
         version:
           type: string
-          title: Version
           description: API 版本号
+          example: 0.2.0
         drafts_dir:
           type: string
-          title: Drafts Dir
           description: 草稿存储目录
         active_drafts:
           type: integer
-          title: Active Drafts
           description: 当前活跃草稿数
-      type: object
-      required:
-      - version
-      - drafts_dir
-      - active_drafts
-      title: HealthResponse
+      additionalProperties: false
     KeyframeAdd:
       properties:
         segment_id:
@@ -2195,202 +2116,130 @@ components:
       - keyframes
       title: KeyframeBatch
     MaterialAudioDurationResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         duration:
           type: integer
-          title: Duration
           description: 音频时长（微秒）
-          default: 0
         duration_seconds:
           type: number
-          title: Duration Seconds
           description: 音频时长（秒）
-          default: 0.0
         material_name:
           type: string
-          title: Material Name
           description: 素材文件名
-          default: ''
         path:
           type: string
-          title: Path
           description: 素材文件路径
-          default: ''
-      type: object
-      title: MaterialAudioDurationResponse
+      additionalProperties: false
     MaterialVideoInfoResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         duration:
           type: integer
-          title: Duration
           description: 时长（微秒）
-          default: 0
         width:
           type: integer
-          title: Width
           description: 视频宽度
-          default: 0
         height:
           type: integer
-          title: Height
           description: 视频高度
-          default: 0
         type:
           type: string
-          title: Type
           description: 素材类型（video/image）
-          default: ''
         material_name:
           type: string
-          title: Material Name
           description: 素材文件名
-          default: ''
         path:
           type: string
-          title: Path
           description: 素材文件路径
-          default: ''
-      type: object
-      title: MaterialVideoInfoResponse
+      additionalProperties: false
     MetadataItem:
+      type: object
       properties:
         name:
           type: string
-          title: Name
           description: 内部名称
         display_name:
           type: string
-          title: Display Name
           description: 显示名称
         is_vip:
           type: boolean
-          title: Is Vip
           description: 是否 VIP
-          default: false
         resource_id:
           type: string
-          title: Resource Id
           description: 资源 ID
-          default: ''
         effect_id:
           type: string
-          title: Effect Id
           description: 效果 ID
-          default: ''
         duration_us:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Duration Us
+          type: integer
           description: 持续时间（微秒，动画类）
         duration_seconds:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Duration Seconds
+          type: number
           description: 持续时间（秒，动画类）
         params:
-          anyOf:
-          - items:
-              $ref: '#/components/schemas/MetadataParamItem'
-            type: array
-          - type: 'null'
-          title: Params
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataParamItem'
           description: 参数列表
-      type: object
-      required:
-      - name
-      - display_name
-      title: MetadataItem
     MetadataListResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         items:
+          type: array
           items:
             $ref: '#/components/schemas/MetadataItem'
-          type: array
-          title: Items
           description: 元数据项列表
         count:
           type: integer
-          title: Count
           description: 总数
-          default: 0
-      type: object
-      title: MetadataListResponse
+      additionalProperties: false
     MetadataParamItem:
+      type: object
       properties:
         name:
           type: string
-          title: Name
           description: 参数名称
         default:
           type: number
-          title: Default
           description: 默认值
-          default: 0.0
         min:
           type: number
-          title: Min
           description: 最小值
-          default: 0.0
         max:
           type: number
-          title: Max
           description: 最大值
-          default: 0.0
-      type: object
-      required:
-      - name
-      title: MetadataParamItem
     SegmentResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         segment_id:
           type: string
-          title: Segment Id
           description: 新创建片段的 ID
-          default: ''
-      type: object
-      title: SegmentResponse
+      additionalProperties: false
     SimpleWorkflow:
       properties:
         width:
@@ -2430,29 +2279,21 @@ components:
       type: object
       title: SimpleWorkflow
     SimpleWorkflowResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         duration:
           type: integer
-          title: Duration
           description: 草稿总时长（微秒）
-          default: 0
         duration_seconds:
           type: number
-          title: Duration Seconds
           description: 草稿总时长（秒）
-          default: 0.0
-      type: object
-      title: SimpleWorkflowResponse
+      additionalProperties: false
     StickerAdd:
       properties:
         resource_id:
@@ -2753,25 +2594,19 @@ components:
       - microseconds
       title: TimeFormat
     TimeFormatResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
-        message:
-          type: string
-          title: Message
-          description: 操作结果消息
-          default: ''
         formatted:
           type: string
-          title: Formatted
           description: 格式化后的时间字符串
-      type: object
-      required:
-      - formatted
-      title: TimeFormatResponse
+          example: '00:01:05.000'
+        message:
+          type: string
+          description: 操作结果消息
+      additionalProperties: false
     TimeParse:
       properties:
         time_input:
@@ -2786,25 +2621,19 @@ components:
       - time_input
       title: TimeParse
     TimeParseResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
-        message:
-          type: string
-          title: Message
-          description: 操作结果消息
-          default: ''
         microseconds:
           type: integer
-          title: Microseconds
           description: 解析后的微秒数
-      type: object
-      required:
-      - microseconds
-      title: TimeParseResponse
+          example: 5000000
+        message:
+          type: string
+          description: 操作结果消息
+      additionalProperties: false
     TrackAdd:
       properties:
         track_type:
@@ -2832,85 +2661,57 @@ components:
       - track_type
       title: TrackAdd
     TrackAddResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         track_type:
           type: string
-          title: Track Type
           description: 轨道类型
-          default: ''
         track_name:
           type: string
-          title: Track Name
           description: 轨道名称
-          default: ''
-      type: object
-      title: TrackAddResponse
+      additionalProperties: false
     TrackItem:
+      type: object
       properties:
         name:
           type: string
-          title: Name
           description: 轨道名称
         type:
           type: string
-          title: Type
           description: 轨道类型
         render_index:
           type: integer
-          title: Render Index
           description: 渲染层级
         mute:
           type: boolean
-          title: Mute
           description: 是否静音
-          default: false
         segment_count:
           type: integer
-          title: Segment Count
           description: 片段数量
-          default: 0
         source:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Source
+          type: string
           description: 来源标识（imported=导入轨道）
-      type: object
-      required:
-      - name
-      - type
-      - render_index
-      title: TrackItem
     TrackListResponse:
+      type: object
       properties:
         success:
           type: boolean
-          title: Success
           description: 操作是否成功
-          default: true
         message:
           type: string
-          title: Message
           description: 操作结果消息
-          default: ''
         tracks:
+          type: array
           items:
             $ref: '#/components/schemas/TrackItem'
-          type: array
-          title: Tracks
           description: 轨道列表
-      type: object
-      title: TrackListResponse
+      additionalProperties: false
     TransitionAdd:
       properties:
         segment_id:
@@ -3031,6 +2832,65 @@ components:
           - type: 'null'
           title: Scale Y
           description: Y 缩放
+        clip_settings:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Clip Settings
+          description: 图像调节设置
+        round_corner:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Round Corner
+          description: 剪映原生圆角 0~100，8 会写入 0.08
+        glow_outline:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: boolean
+          - type: 'null'
+          title: Glow Outline
+          description: 剪映发光描边，如 {"color":"#000000","size":10}；true 使用黑色大小 10
+        effects:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Effects
+          description: 片段级视频特效列表
+        filters:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          title: Filters
+          description: 片段级滤镜列表
+        mask:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Mask
+          description: 片段级蒙版设置
+        background_filling:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Background Filling
+          description: 片段背景填充设置
+        mix_mode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Mix Mode
+          description: 混合模式名称
         track_name:
           anyOf:
           - type: string

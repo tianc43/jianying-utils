@@ -5,6 +5,10 @@ export interface EnvironmentInfo {
   detectedPlaceholderId: string | null;
 }
 
+export interface AppConfig {
+  draftsDir?: string | null;
+}
+
 export interface InstallDraftRequest {
   source: string;
   draftsDir: string;
@@ -30,8 +34,24 @@ export interface InstallLogEvent {
   message: string;
 }
 
+export interface InstallProgressEvent {
+  step: string;
+  bytesRead: number;
+  totalBytes: number | null;
+  percent: number | null;
+  message: string;
+}
+
 export async function getEnvironmentInfo(): Promise<EnvironmentInfo> {
   return invoke<EnvironmentInfo>("get_environment_info");
+}
+
+export async function getAppConfig(): Promise<AppConfig> {
+  return invoke<AppConfig>("get_app_config");
+}
+
+export async function saveAppConfig(config: AppConfig): Promise<void> {
+  return invoke<void>("save_app_config", { config });
 }
 
 export async function getDiagnosticsInfo(): Promise<DiagnosticsInfo> {

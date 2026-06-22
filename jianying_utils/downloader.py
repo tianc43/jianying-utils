@@ -257,22 +257,14 @@ def iter_recent_draft_jsons(drafts_root: Path) -> Iterable[Path]:
 
 def find_default_drafts_dir() -> str:
     candidates = []
-    for env_name in ("JIANYING_NATIVE_DRAFTS_DIR", "JIANYING_DRAFTS_DIR"):
-        value = os.environ.get(env_name)
-        if value:
-            candidates.append(value)
-
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    if local_app_data:
-        candidates.append(
-            str(Path(local_app_data) / "JianyingPro" / "User Data" / "Projects" / "com.lveditor.draft")
-        )
-    candidates.append(r"D:\jianying\JianyingPro Drafts")
+    value = os.environ.get("JIANYING_NATIVE_DRAFTS_DIR")
+    if value:
+        candidates.append(value)
 
     for candidate in candidates:
         if candidate and Path(candidate).expanduser().is_dir():
             return candidate
-    raise RuntimeError("Cannot find Jianying drafts directory. Pass --drafts-dir.")
+    raise RuntimeError("Cannot find Jianying drafts directory. Pass --drafts-dir or set JIANYING_NATIVE_DRAFTS_DIR.")
 
 
 def build_parser() -> argparse.ArgumentParser:

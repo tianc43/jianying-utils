@@ -176,7 +176,16 @@ class VideoAdd(BaseModel):
     scale_x: Optional[float] = Field(None, description="X 缩放")
     scale_y: Optional[float] = Field(None, description="Y 缩放")
     clip_settings: Optional[Dict[str, Any]] = Field(None, description="图像调节设置")
-    round_corner: Optional[float] = Field(None, description="矩形蒙版圆角 0~100")
+    round_corner: Optional[float] = Field(None, description="剪映原生圆角 0~100，8 会写入 0.08")
+    glow_outline: Optional[Union[Dict[str, Any], bool]] = Field(
+        None,
+        description="剪映发光描边，如 {\"color\":\"#000000\",\"size\":10}；true 使用黑色大小 10"
+    )
+    effects: Optional[List[Dict[str, Any]]] = Field(None, description="片段级视频特效列表")
+    filters: Optional[List[Dict[str, Any]]] = Field(None, description="片段级滤镜列表")
+    mask: Optional[Dict[str, Any]] = Field(None, description="片段级蒙版设置")
+    background_filling: Optional[Dict[str, Any]] = Field(None, description="片段背景填充设置")
+    mix_mode: Optional[str] = Field(None, description="混合模式名称")
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class VideoBatch(BaseModel):
@@ -1050,8 +1059,8 @@ def tts_download(filename: str):
 if __name__ == "__main__":
     import uvicorn
     print(f"Drafts dir:  {DRAFTS_DIR}")
-    print(f"OpenAPI:     http://localhost:8000/openapi.json")
-    print(f"OpenAPI YAML: http://localhost:8000/openapi.yaml")
-    print(f"Swagger UI:  http://localhost:8000/docs")
-    print(f"API docs:    http://localhost:8000/redoc")
+    print(f"OpenAPI:     {DEPLOY_URL}/openapi.json")
+    print(f"OpenAPI YAML: {DEPLOY_URL}/openapi.yaml")
+    print(f"Swagger UI:  {DEPLOY_URL}/docs")
+    print(f"API docs:    {DEPLOY_URL}/redoc")
     uvicorn.run("jianying_utils.server:app", host="0.0.0.0", port=8000, reload=True)

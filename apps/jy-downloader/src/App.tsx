@@ -13,6 +13,7 @@ import {
   Divider,
   Group,
   Paper,
+  Progress,
   SegmentedControl,
   Stack,
   Text,
@@ -32,12 +33,14 @@ import {
   logsAtom,
   overwriteAtom,
   placeholderIdAtom,
+  progressAtom,
   resultAtom,
   setCurrentStepAtom,
+  setProgressAtom,
   sourceAtom,
   sourceModeAtom,
 } from "./state";
-import { getDiagnosticsInfo, getEnvironmentInfo, installDraft, InstallLogEvent, openLogDir } from "./tauri";
+import { getDiagnosticsInfo, getEnvironmentInfo, installDraft, InstallLogEvent, InstallProgressEvent, openLogDir, saveAppConfig } from "./tauri";
 
 export default function App() {
   const [diagnosticsText, setDiagnosticsText] = useState("");
@@ -51,10 +54,12 @@ export default function App() {
   const result = useAtomValue(resultAtom);
   const logs = useAtomValue(logsAtom);
   const currentStep = useAtomValue(currentStepAtom);
+  const progress = useAtomValue(progressAtom);
   const canInstall = useAtomValue(canInstallAtom);
   const appendLog = useSetAtom(appendLogAtom);
   const clearRunState = useSetAtom(clearRunStateAtom);
   const setCurrentStep = useSetAtom(setCurrentStepAtom);
+  const setProgress = useSetAtom(setProgressAtom);
   const setResult = useSetAtom(resultAtom);
 
   useEffect(() => {
@@ -73,6 +78,24 @@ export default function App() {
       unlisten?.();
     };
   }, [appendLog, setCurrentStep]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<InstallProgressEvent>("install-progress", (event) => {
+      setProgress({
+        step: event.payload.step,
+        bytesRead: event.payload.bytesRead,
+        totalBytes: event.payload.totalBytes,
+        percent: event.payload.percent,
+        message: event.payload.message,
+      });
+    }).then((handler) => {
+      unlisten = handler;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [setProgress]);
 
   useEffect(() => {
     getEnvironmentInfo()
@@ -104,6 +127,12 @@ export default function App() {
     const selected = await open({ directory: true, multiple: false, title: "选择剪映草稿目录" });
     if (typeof selected === "string") {
       setDraftsDir(selected);
+      try {
+        await saveAppConfig({ draftsDir: selected });
+        appendLog({ level: "success", message: "草稿目录已保存，下次启动会自动使用。" });
+      } catch (error) {
+        appendLog({ level: "error", message: `保存草稿目录失败：${String(error)}` });
+      }
     }
   }
 
@@ -137,6 +166,11 @@ export default function App() {
       });
       setResult(installResult);
       appendLog({ level: "success", message: `导入完成：${installResult.targetDir}` });
+      try {
+        await saveAppConfig({ draftsDir: draftsDir.trim() });
+      } catch (error) {
+        appendLog({ level: "error", message: `草稿已导入，但保存草稿目录失败：${String(error)}` });
+      }
     } catch (error) {
       appendLog({ level: "error", message: String(error) });
       setCurrentStep({ key: "error", level: "error", message: String(error) });
@@ -275,7 +309,24 @@ export default function App() {
                 </Alert>
               ) : installing && currentStep ? (
                 <Alert color={currentStep.level === "error" ? "red" : "blue"} icon={<LoaderCircle className="spin" size={18} />} title="正在导入">
-                  <Text size="sm">{currentStep.message}</Text>
+                  <Stack gap={8}>
+                    <Text size="sm">{currentStep.message}</Text>
+                    {progress ? (
+                      <div>
+                        <Group justify="space-between" mb={4}>
+                          <Text size="xs" c="dimmed">{progress.message}</Text>
+                          <Text size="xs" c="dimmed">
+                            {progress.percent == null ? "读取中" : `${Math.round(progress.percent)}%`}
+                          </Text>
+                        </Group>
+                        {progress.percent == null ? (
+                          <div className="indeterminate-progress"><span /></div>
+                        ) : (
+                          <Progress value={progress.percent} color="teal" radius="xs" />
+                        )}
+                      </div>
+                    ) : null}
+                  </Stack>
                 </Alert>
               ) : (
                 <Alert color="gray" icon={<TriangleAlert size={18} />} title="等待导入">

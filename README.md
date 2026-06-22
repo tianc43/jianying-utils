@@ -146,6 +146,34 @@ uvicorn jianying_utils.server:app --host 0.0.0.0 --port 8000
 | | `POST /util/tts` | 文本转语音（Edge-TTS） |
 | | `GET /util/tts/voices` | 发音人列表 |
 
+## 主题开头与片段级效果
+
+视频开头可以先用 1-3 秒文字主题卡吸引注意力，再进入正文图片/视频。推荐流程：
+
+1. `POST /drafts/{id}/texts` 添加主题文本，例如从 `0s` 到 `2s`，使用大字号、描边、阴影或背景。
+2. `POST /drafts/{id}/animations/text-intro` 给主题文本加入场动画，必要时再加 `text-loop` 保持动感。
+3. `POST /drafts/{id}/audios` 在主题抛出点添加短音效或重音，例如 `start: "0.6s"`、`duration: "0.5s"`。
+4. 如果由 Hyperframes 或其他工具生成 1-3 秒开头动画，可把生成的视频作为普通素材通过 `POST /drafts/{id}/videos` 加到开头。
+
+视频/图片片段现在支持在添加时直接挂载剪映 UI 里的圆角和“发光描边”：
+
+```json
+{
+  "video_path": "/data/assets/topic-card.png",
+  "start": "2s",
+  "duration": "4s",
+  "round_corner": 8,
+  "glow_outline": {
+    "color": "#000000",
+    "size": 10
+  }
+}
+```
+
+说明：这些字段会写入剪映原生的 `materials.video_radius` 和 `materials.video_strokes`，并挂到片段的 `extra_material_refs`。已按剪映草稿验证：圆角 `8` 会保存为 `0.08`，发光描边黑色保存为 `[1,0,0,0]`，大小 `10` 保存为 `0.1`。
+
+部署说明：代码不会硬编码本机剪映缓存路径。需要指定剪映效果资源路径时，可在运行环境配置 `JIANYING_EFFECT_CACHE_DIR`，或分别配置 `JIANYING_GLOW_STROKE_PATH`、`JIANYING_ROUND_RADIUS_PATH`。这些变量不配置时，服务端会写入空路径，由剪映按资源 ID 识别/补全。
+
 ## 本机 Downloader 导入草稿
 
 服务端下载接口返回占位符无关的便携 ZIP 包：素材路径保持为
@@ -156,16 +184,16 @@ uvicorn jianying_utils.server:app --host 0.0.0.0 --port 8000
 ```powershell
 python -m jianying_utils.downloader install `
   --url "http://127.0.0.1:18532/drafts/<draft_id>/download" `
-  --drafts-dir "D:\jianying\JianyingPro Drafts"
+  --drafts-dir "<本机剪映草稿目录>"
 ```
 
-如果用户机器上还没有任何剪映草稿，先在剪映里创建一个空草稿；或者手动传入：
+如果用户机器上还没有任何剪映草稿，先在剪映里创建一个空草稿。导入器不会硬编码本机草稿目录，需要通过 `--drafts-dir` 或 `JIANYING_NATIVE_DRAFTS_DIR` 指定：
 
 ```powershell
 python -m jianying_utils.downloader install `
   --url "http://server/drafts/<draft_id>/download" `
-  --drafts-dir "D:\jianying\JianyingPro Drafts" `
-  --placeholder-id "0E685133-18CE-45ED-8CB8-2904A212EC80"
+  --drafts-dir "<本机剪映草稿目录>" `
+  --placeholder-id "<本机草稿占位符ID>"
 ```
 
 常用参数：

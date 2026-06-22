@@ -5,11 +5,20 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Cursor, Read};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager, Window};
 use tempfile::tempdir;
 use walkdir::WalkDir;
 use zip::ZipArchive;
+
+const DOWNLOAD_PROGRESS_CHUNK_SIZE: usize = 64 * 1024;
+const DOWNLOAD_PROGRESS_INTERVAL: Duration = Duration::from_millis(120);
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AppConfig {
+    drafts_dir: Option<String>,
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +53,16 @@ struct InstallLogEvent {
     message: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct InstallProgressEvent {
+    step: String,
+    bytes_read: u64,
+    total_bytes: Option<u64>,
+    percent: Option<f64>,
+    message: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DiagnosticsInfo {
@@ -70,7 +89,11 @@ type Result<T> = std::result::Result<T, InstallError>;
 #[tauri::command]
 async fn get_environment_info() -> std::result::Result<EnvironmentInfo, String> {
     tauri::async_runtime::spawn_blocking(|| {
-        let default_drafts_dir = find_default_drafts_dir();
+        let config = load_app_config().unwrap_or_default();
+        let default_drafts_dir = config
+            .drafts_dir
+            .filter(|path| Path::new(path).is_dir())
+            .or_else(find_default_drafts_dir);
         let detected_placeholder_id = default_drafts_dir
             .as_ref()
             .and_then(|path| detect_placeholder_id(Path::new(path)));
@@ -82,6 +105,22 @@ async fn get_environment_info() -> std::result::Result<EnvironmentInfo, String> 
     })
     .await
     .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn get_app_config() -> std::result::Result<AppConfig, String> {
+    tauri::async_runtime::spawn_blocking(load_app_config)
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn save_app_config(config: AppConfig) -> std::result::Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || save_app_config_inner(&config))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -158,8 +197,13 @@ fn install_draft_inner(window: &Window, request: InstallDraftRequest) -> Result<
 
     let temp = tempdir()?;
     emit_install_log(window, "info", "download", "开始下载草稿 ZIP 包。");
-    let zip_bytes = fetch_source(&request.source)?;
-    emit_install_log(window, "success", "download", &format!("下载完成，大小 {} 字节。", zip_bytes.len()));
+    let zip_bytes = fetch_source(window, &request.source)?;
+    emit_install_log(
+        window,
+        "success",
+        "download",
+        &format!("下载完成，大小 {}。", format_bytes(zip_bytes.len() as u64)),
+    );
     let extract_dir = temp.path().join("extract");
     fs::create_dir_all(&extract_dir)?;
     emit_install_log(window, "info", "extract", "正在解压并校验 ZIP 路径。");
@@ -181,6 +225,9 @@ fn install_draft_inner(window: &Window, request: InstallDraftRequest) -> Result<
     emit_install_log(window, "info", "rewrite", "正在转换本机剪映占位符路径。");
     rewrite_draft(&target_dir, &drafts_root, &placeholder_id)?;
     emit_install_log(window, "success", "complete", &format!("导入完成：{}", target_dir.display()));
+    let _ = save_app_config_inner(&AppConfig {
+        drafts_dir: Some(drafts_root.display().to_string()),
+    });
 
     Ok(InstallDraftResult {
         target_dir: target_dir.display().to_string(),
@@ -203,6 +250,35 @@ fn emit_install_log(window: &Window, level: &str, step: &str, message: &str) {
     let _ = window.emit("install-log", event);
 }
 
+fn emit_install_progress(
+    window: Option<&Window>,
+    step: &str,
+    bytes_read: u64,
+    total_bytes: Option<u64>,
+) {
+    let percent = total_bytes
+        .filter(|total| *total > 0)
+        .map(|total| ((bytes_read as f64 / total as f64) * 100.0).min(100.0));
+    let message = match total_bytes {
+        Some(total) if total > 0 => format!(
+            "{} / {}",
+            format_bytes(bytes_read.min(total)),
+            format_bytes(total)
+        ),
+        _ => format!("已读取 {}", format_bytes(bytes_read)),
+    };
+    let event = InstallProgressEvent {
+        step: step.to_string(),
+        bytes_read,
+        total_bytes,
+        percent,
+        message,
+    };
+    if let Some(window) = window {
+        let _ = window.emit("install-progress", event);
+    }
+}
+
 fn append_persistent_log(event: &InstallLogEvent) -> Result<()> {
     let path = log_file_path()?;
     if let Some(parent) = path.parent() {
@@ -222,6 +298,32 @@ fn log_file_path() -> Result<PathBuf> {
     Ok(root.join("jy-downloader.log"))
 }
 
+fn config_file_path() -> Result<PathBuf> {
+    let root = dirs::config_dir()
+        .or_else(dirs::data_local_dir)
+        .unwrap_or_else(std::env::temp_dir)
+        .join("jy-downloader");
+    Ok(root.join("config.json"))
+}
+
+fn load_app_config() -> Result<AppConfig> {
+    let path = config_file_path()?;
+    if !path.is_file() {
+        return Ok(AppConfig::default());
+    }
+    let text = fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&text)?)
+}
+
+fn save_app_config_inner(config: &AppConfig) -> Result<()> {
+    let path = config_file_path()?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, serde_json::to_string_pretty(config)?)?;
+    Ok(())
+}
+
 fn friendly_error(error: &InstallError) -> String {
     match error {
         InstallError::Request(request_error) if request_error.is_decode() => {
@@ -239,13 +341,13 @@ fn friendly_error(error: &InstallError) -> String {
     }
 }
 
-fn fetch_source(source: &str) -> Result<Vec<u8>> {
+fn fetch_source(window: &Window, source: &str) -> Result<Vec<u8>> {
     let trimmed = source.trim();
     if trimmed.is_empty() {
         return Err(InstallError::Message("请填写草稿下载 URL 或选择本地 ZIP。".to_string()));
     }
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        return fetch_http_source(trimmed);
+        return fetch_http_source(Some(window), trimmed);
     }
     let path = Path::new(trimmed);
     if !path.is_file() {
@@ -254,10 +356,16 @@ fn fetch_source(source: &str) -> Result<Vec<u8>> {
     if path.extension().and_then(|value| value.to_str()).map(str::to_lowercase) != Some("zip".to_string()) {
         return Err(InstallError::Message("请选择 .zip 草稿包。".to_string()));
     }
-    Ok(fs::read(path)?)
+    read_local_source_with_progress(Some(window), path)
 }
 
-fn fetch_http_source(url: &str) -> Result<Vec<u8>> {
+fn read_local_source_with_progress(window: Option<&Window>, path: &Path) -> Result<Vec<u8>> {
+    let total = fs::metadata(path).ok().map(|meta| meta.len());
+    let mut file = fs::File::open(path)?;
+    read_to_vec_with_progress(window, &mut file, total)
+}
+
+fn fetch_http_source(window: Option<&Window>, url: &str) -> Result<Vec<u8>> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(120))
         .no_gzip()
@@ -270,12 +378,56 @@ fn fetch_http_source(url: &str) -> Result<Vec<u8>> {
         .header(reqwest::header::ACCEPT_ENCODING, "identity")
         .send()?
         .error_for_status()?;
-    let mut bytes = Vec::new();
-    response.read_to_end(&mut bytes)?;
+    let total = response.content_length();
+    let bytes = read_to_vec_with_progress(window, &mut response, total)?;
     if bytes.is_empty() {
         return Err(InstallError::Message("下载结果为空。".to_string()));
     }
     Ok(bytes)
+}
+
+fn read_to_vec_with_progress<R: Read>(
+    window: Option<&Window>,
+    reader: &mut R,
+    total_bytes: Option<u64>,
+) -> Result<Vec<u8>> {
+    let mut bytes = Vec::with_capacity(total_bytes.unwrap_or(0).min(32 * 1024 * 1024) as usize);
+    let mut buffer = vec![0; DOWNLOAD_PROGRESS_CHUNK_SIZE];
+    let mut bytes_read = 0_u64;
+    let mut last_emit = Instant::now()
+        .checked_sub(DOWNLOAD_PROGRESS_INTERVAL)
+        .unwrap_or_else(Instant::now);
+
+    emit_install_progress(window, "download", 0, total_bytes);
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        bytes.extend_from_slice(&buffer[..count]);
+        bytes_read += count as u64;
+        if last_emit.elapsed() >= DOWNLOAD_PROGRESS_INTERVAL {
+            emit_install_progress(window, "download", bytes_read, total_bytes);
+            last_emit = Instant::now();
+        }
+    }
+    emit_install_progress(window, "download", bytes_read, total_bytes);
+    Ok(bytes)
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{} {}", bytes, UNITS[unit])
+    } else {
+        format!("{:.1} {}", value, UNITS[unit])
+    }
 }
 
 fn extract_zip_safe(bytes: &[u8], target_dir: &Path) -> Result<()> {
@@ -564,19 +716,6 @@ fn find_default_drafts_dir() -> Option<String> {
     if let Ok(value) = std::env::var("JIANYING_NATIVE_DRAFTS_DIR") {
         candidates.push(PathBuf::from(value));
     }
-    if let Ok(value) = std::env::var("JIANYING_DRAFTS_DIR") {
-        candidates.push(PathBuf::from(value));
-    }
-    if let Some(local_data) = dirs::data_local_dir() {
-        candidates.push(
-            local_data
-                .join("JianyingPro")
-                .join("User Data")
-                .join("Projects")
-                .join("com.lveditor.draft"),
-        );
-    }
-    candidates.push(PathBuf::from(r"D:\jianying\JianyingPro Drafts"));
 
     candidates
         .into_iter()
@@ -618,7 +757,7 @@ mod tests {
             stream.write_all(&zip_bytes).unwrap();
         });
 
-        let actual = fetch_http_source(&url).unwrap();
+        let actual = fetch_http_source(None, &url).unwrap();
         server.join().unwrap();
         assert_eq!(actual, expected);
     }
@@ -629,6 +768,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_environment_info,
+            get_app_config,
+            save_app_config,
             get_diagnostics_info,
             open_log_dir,
             install_draft

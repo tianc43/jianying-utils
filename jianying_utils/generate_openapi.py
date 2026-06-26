@@ -10,6 +10,9 @@ Usage:
 from __future__ import annotations
 import json, sys, os, copy
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 # ── Base schemas reused across responses ──────────────────────────────
 
@@ -312,10 +315,59 @@ PATH_RESPONSE_MAP = {
     ("/util/time/format", "post"): "TimeFormatResponse",
 }
 
+TIME_VALUE_DESCRIPTION = (
+    "时间值。剪映内部使用微秒（μs）作为时间单位，1 秒 = 1,000,000 微秒。"
+    "传 integer/number 或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；"
+    "传带单位字符串时按时间表达式解析，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。"
+)
+
+TIME_FIELD_DOCS = {
+    "start": {
+        "description": f"时间线起始时间。{TIME_VALUE_DESCRIPTION}",
+        "examples": ["0s", 0, 5000000],
+    },
+    "duration": {
+        "description": f"持续时长，不是结束时间。{TIME_VALUE_DESCRIPTION}",
+        "examples": ["3s", 3000000],
+    },
+    "in_duration": {
+        "description": f"淡入持续时长。{TIME_VALUE_DESCRIPTION}",
+        "examples": ["0.5s", 500000],
+    },
+    "out_duration": {
+        "description": f"淡出持续时长。{TIME_VALUE_DESCRIPTION}",
+        "examples": ["0.5s", 500000],
+    },
+    "time_offset": {
+        "description": f"相对片段起点的时间偏移。{TIME_VALUE_DESCRIPTION}",
+        "examples": ["0.5s", 500000],
+    },
+    "microseconds": {
+        "description": "微秒数（μs）。1 秒 = 1,000,000 微秒。",
+        "examples": [5000000],
+    },
+    "time_input": {
+        "description": TIME_VALUE_DESCRIPTION,
+        "examples": ["5s", "1m30s", 5000000],
+    },
+}
+
+END_FIELD_DOC = {
+    "description": "结束时间，单位微秒（μs）。注意这是绝对结束时间，不是持续时长；持续时长 = end - start。",
+    "examples": [5000000],
+}
+
 
 def load_existing_spec(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_dynamic_spec() -> dict:
+    """Build schema from server.py models instead of reusing the stale static file."""
+    from jianying_utils import server
+
+    return server._openapi_fastapi_default()
 
 
 def apply_response_schemas(spec: dict) -> dict:
@@ -347,6 +399,79 @@ def apply_response_schemas(spec: dict) -> dict:
     return spec
 
 
+def apply_time_unit_docs(spec: dict) -> dict:
+    """Make time units explicit and consistent across schemas and operations."""
+    spec = copy.deepcopy(spec)
+    info = spec.setdefault("info", {})
+    base_description = info.get("description", "")
+    time_note = (
+        "\n\n时间单位说明：剪映内部使用微秒（μs），1 秒 = 1,000,000 微秒。"
+        "API 中 `start`、`duration`、`time_offset`、`in_duration`、`out_duration` 等字段"
+        "通常支持两种写法：数字/纯数字字符串按微秒处理，带单位字符串如 `0.5s`、`5s`、"
+        "`1m30s`、`1h2m3s` 会自动解析。批量接口中的 `end` 表示绝对结束时间，单位微秒，"
+        "不是持续时长。"
+    )
+    if "时间单位说明" not in base_description:
+        info["description"] = base_description + time_note
+
+    for schema in spec.get("components", {}).get("schemas", {}).values():
+        _patch_schema_time_fields(schema)
+
+    for path_item in spec.get("paths", {}).values():
+        for operation in path_item.values():
+            if isinstance(operation, dict):
+                _patch_operation_examples(operation)
+
+    return spec
+
+
+def _patch_schema_time_fields(schema: dict[str, Any]) -> None:
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for name, prop in properties.items():
+            if not isinstance(prop, dict):
+                continue
+            if name in TIME_FIELD_DOCS:
+                _merge_time_doc(prop, TIME_FIELD_DOCS[name])
+            elif name == "end":
+                _merge_time_doc(prop, END_FIELD_DOC)
+            elif name.endswith("_seconds"):
+                prop.setdefault("description", "秒数（s）。")
+                prop.setdefault("examples", [5.0])
+            elif name.endswith("_us"):
+                prop.setdefault("description", "微秒数（μs）。1 秒 = 1,000,000 微秒。")
+                prop.setdefault("examples", [5000000])
+            _patch_schema_time_fields(prop)
+
+    for key in ("items", "anyOf", "oneOf", "allOf"):
+        value = schema.get(key)
+        if isinstance(value, dict):
+            _patch_schema_time_fields(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _patch_schema_time_fields(item)
+
+
+def _merge_time_doc(prop: dict[str, Any], doc: dict[str, Any]) -> None:
+    existing = prop.get("description", "")
+    if "微秒" not in existing and "μs" not in existing:
+        prop["description"] = doc["description"]
+    elif prop.get("description"):
+        prop["description"] = prop["description"].replace("如 5s", "如 \"5s\"")
+    prop.setdefault("examples", doc["examples"])
+
+
+def _patch_operation_examples(operation: dict[str, Any]) -> None:
+    description = operation.get("description", "")
+    if any(word in description for word in ("时间", "时长", "字幕", "音频", "视频", "特效", "滤镜", "转场", "关键帧")):
+        if "时间单位" not in description:
+            operation["description"] = description + (
+                "\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；"
+                "也可传字符串如 `5s`、`0.5s`、`1m30s`。"
+            )
+
+
 def _describe_schema(name: str) -> str:
     descriptions = {
         "HealthResponse": "服务健康状态",
@@ -369,12 +494,17 @@ def _describe_schema(name: str) -> str:
     return descriptions.get(name, "Successful Response")
 
 
-def generate(input_path: str, output_path: str):
-    spec = load_existing_spec(input_path)
+def generate(input_path: str | None, output_path: str):
+    spec = load_existing_spec(input_path) if input_path else load_dynamic_spec()
     spec = apply_response_schemas(spec)
+    spec = apply_time_unit_docs(spec)
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(spec, f, ensure_ascii=False, indent=2)
+
+    yaml_path = str(Path(output_path).with_suffix(".yaml"))
+    with open(yaml_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(spec, f, allow_unicode=True, sort_keys=False)
 
     # Print summary
     paths_count = len(spec.get("paths", {}))
@@ -387,6 +517,7 @@ def generate(input_path: str, output_path: str):
                       if m == k[1])
 
     print(f"OpenAPI spec generated: {output_path}")
+    print(f"OpenAPI YAML generated: {yaml_path}")
     print(f"  Path groups: {paths_count}")
     print(f"  Total endpoints: {endpoints_count}")
     print(f"  Schema definitions: {schemas_count}")
@@ -413,4 +544,4 @@ if __name__ == "__main__":
         elif arg == "--output" and i + 1 < len(args):
             output_path = args[i + 1]
 
-    generate(str(input_path), str(output_path))
+    generate(str(input_path) if input_path else None, str(output_path))

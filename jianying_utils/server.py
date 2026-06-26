@@ -152,6 +152,17 @@ def _ok(**kw) -> dict:
 # Models
 # ═══════════════════════════════════════════════════════════════════════════
 
+TIME_VALUE_DESC = (
+    "时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。"
+    "传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；"
+    "也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。"
+)
+START_TIME_DESC = f"片段在时间线上的起始时间。{TIME_VALUE_DESC}"
+DURATION_TIME_DESC = f"持续时长，不是结束时间。{TIME_VALUE_DESC}"
+END_TIME_US_DESC = "结束时间，单位微秒（μs）。注意这是绝对结束时间，不是持续时长；持续时长 = end - start。"
+START_TIME_US_DESC = "起始时间，单位微秒（μs）。1 秒 = 1,000,000 微秒。"
+TIME_OFFSET_DESC = f"相对片段起点的时间偏移。{TIME_VALUE_DESC}"
+
 class DraftCreate(BaseModel):
     width: int = Field(1920, description="视频宽度（像素）")
     height: int = Field(1080, description="视频高度（像素）")
@@ -165,9 +176,27 @@ class TrackAdd(BaseModel):
     relative_index: int = Field(0, description="相对图层位置，越大越靠前")
 
 class VideoAdd(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "video_path": "https://example.com/image.png",
+                    "start": "0s",
+                    "duration": "5s",
+                    "track_name": "main"
+                },
+                {
+                    "video_path": "D:/materials/clip.mp4",
+                    "start": 5000000,
+                    "duration": 3000000
+                }
+            ]
+        }
+    }
+
     video_path: str = Field(..., description="视频/图片文件路径或远程 URL")
-    start: Union[str, int] = Field(..., description="起始时间（微秒或时间字符串如 5s）")
-    duration: Optional[Union[str, int]] = Field(None, description="持续时间")
+    start: Union[str, int] = Field(..., description=START_TIME_DESC, examples=["0s", 0, 5000000])
+    duration: Optional[Union[str, int]] = Field(None, description=f"{DURATION_TIME_DESC}不填则自动根据素材时长计算。", examples=["5s", 5000000])
     speed: float = Field(1.0, description="播放速度")
     volume: float = Field(1.0, description="音量")
     alpha: Optional[float] = Field(None, description="不透明度 0~1")
@@ -189,30 +218,76 @@ class VideoAdd(BaseModel):
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class VideoBatch(BaseModel):
-    video_infos: List[Dict[str, Any]] = Field(..., description="视频信息列表")
+    video_infos: List[Dict[str, Any]] = Field(
+        ...,
+        description=(
+            "视频/图片信息列表。每项至少包含 video_path、start、end；"
+            "start/end 为微秒（μs），end 是绝对结束时间，不是持续时长。"
+            "示例：[{\"video_path\":\"/path/a.png\",\"start\":0,\"end\":5000000}]。"
+        ),
+    )
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class AudioAdd(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "audio_path": "https://example.com/audio.mp3",
+                    "start": "0s",
+                    "duration": "5s",
+                    "volume": 0.8
+                },
+                {
+                    "audio_path": "D:/materials/bgm.mp3",
+                    "start": 5000000,
+                    "duration": 3000000
+                }
+            ]
+        }
+    }
+
     audio_path: str = Field(..., description="音频文件路径或远程 URL")
-    start: Union[str, int] = Field(..., description="起始时间")
-    duration: Optional[Union[str, int]] = Field(None, description="持续时间")
+    start: Union[str, int] = Field(..., description=START_TIME_DESC, examples=["0s", 0, 5000000])
+    duration: Optional[Union[str, int]] = Field(None, description=f"{DURATION_TIME_DESC}不填则使用素材全长。", examples=["5s", 5000000])
     speed: float = Field(1.0, description="播放速度")
     volume: float = Field(1.0, description="音量")
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class AudioBatch(BaseModel):
-    audio_infos: List[Dict[str, Any]] = Field(..., description="音频信息列表")
+    audio_infos: List[Dict[str, Any]] = Field(
+        ...,
+        description=(
+            "音频信息列表。每项至少包含 audio_path、start、end；"
+            "start/end 为微秒（μs），end 是绝对结束时间，不是持续时长。"
+            "示例：[{\"audio_path\":\"/path/a.mp3\",\"start\":0,\"end\":5000000}]。"
+        ),
+    )
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class CaptionItem(BaseModel):
     text: str = Field(..., description="字幕文本")
-    start: int = Field(..., description="起始时间（微秒）")
-    end: int = Field(..., description="结束时间（微秒）")
+    start: int = Field(..., description=START_TIME_US_DESC, examples=[0])
+    end: int = Field(..., description=END_TIME_US_DESC, examples=[5000000])
 
 class TextAdd(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "text": "标题文本",
+                    "start": "0s",
+                    "duration": "3s",
+                    "font_size": 10,
+                    "text_color": "#FFFFFF"
+                }
+            ]
+        }
+    }
+
     text: str = Field(..., description="文本内容")
-    start: Union[str, int] = Field(..., description="起始时间")
-    duration: Union[str, int] = Field(..., description="持续时间")
+    start: Union[str, int] = Field(..., description=START_TIME_DESC, examples=["0s", 0])
+    duration: Union[str, int] = Field(..., description=DURATION_TIME_DESC, examples=["3s", 3000000])
     font: Optional[str] = Field(None, description="字体名称")
     font_size: float = Field(8.0, description="字体大小")
     text_color: str = Field("#FFFFFF", description="文字颜色 #RRGGBB")
@@ -231,6 +306,21 @@ class TextAdd(BaseModel):
     track_name: Optional[str] = Field(None, description="目标轨道名称")
 
 class CaptionsAdd(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "captions": [
+                        {"text": "第一句字幕", "start": 0, "end": 2500000},
+                        {"text": "第二句字幕", "start": 2500000, "end": 5000000}
+                    ],
+                    "font_size": 5,
+                    "text_color": "#FFFFFF"
+                }
+            ]
+        }
+    }
+
     captions: List[CaptionItem] = Field(..., description="字幕列表")
     font: Optional[str] = Field(None, description="字体名称")
     font_size: float = Field(5.0, description="字体大小")
@@ -252,27 +342,56 @@ class CaptionsAdd(BaseModel):
     has_shadow: bool = Field(False, description="启用阴影")
 
 class EffectAdd(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "effect_name": "金粉",
+                    "start": "0s",
+                    "duration": "3s",
+                    "params": [50]
+                }
+            ]
+        }
+    }
+
     effect_name: str = Field(..., description="特效名称")
-    start: Union[str, int] = Field(..., description="起始时间")
-    duration: Union[str, int] = Field(..., description="持续时间")
+    start: Union[str, int] = Field(..., description=START_TIME_DESC, examples=["0s", 0])
+    duration: Union[str, int] = Field(..., description=DURATION_TIME_DESC, examples=["3s", 3000000])
     params: Optional[List[float]] = Field(None, description="特效参数 0~100")
     track_name: Optional[str] = Field(None, description="特效轨道名称")
 
 class EffectBatch(BaseModel):
-    effect_infos: List[Dict[str, Any]] = Field(..., description="特效列表")
+    effect_infos: List[Dict[str, Any]] = Field(..., description=f"特效列表。每项中的 start、duration 均遵循：{TIME_VALUE_DESC}")
     track_name: Optional[str] = Field(None, description="特效轨道名称")
 
 class FilterAdd(BaseModel):
     filter_name: str = Field(..., description="滤镜名称")
-    start: Union[str, int] = Field(..., description="起始时间")
-    duration: Union[str, int] = Field(..., description="持续时间")
+    start: Union[str, int] = Field(..., description=START_TIME_DESC, examples=["0s", 0])
+    duration: Union[str, int] = Field(..., description=DURATION_TIME_DESC, examples=["3s", 3000000])
     intensity: float = Field(100.0, description="滤镜强度 0~100")
     track_name: Optional[str] = Field(None, description="滤镜轨道名称")
 
 class StickerAdd(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "resource_id": "sticker_resource_id",
+                    "start": "1s",
+                    "duration": "2s",
+                    "transform_x": 0,
+                    "transform_y": 0,
+                    "scale_x": 1,
+                    "scale_y": 1
+                }
+            ]
+        }
+    }
+
     resource_id: str = Field(..., description="贴纸资源 ID")
-    start: Union[str, int] = Field(..., description="起始时间")
-    duration: Union[str, int] = Field(..., description="持续时间")
+    start: Union[str, int] = Field(..., description=START_TIME_DESC, examples=["0s", 0])
+    duration: Union[str, int] = Field(..., description=DURATION_TIME_DESC, examples=["3s", 3000000])
     transform_x: float = Field(0.0, description="X 位移")
     transform_y: float = Field(0.0, description="Y 位移")
     scale_x: float = Field(1.0, description="X 缩放")
@@ -284,35 +403,45 @@ class StickerAdd(BaseModel):
 class AnimationAdd(BaseModel):
     segment_id: str = Field(..., description="片段 ID")
     animation_name: str = Field(..., description="动画名称")
-    duration: Optional[Union[str, int]] = Field(None, description="动画持续时间")
+    duration: Optional[Union[str, int]] = Field(None, description=f"动画持续时长。{DURATION_TIME_DESC}不填则使用动画默认值。", examples=["0.5s", 500000])
 
 class KeyframeAdd(BaseModel):
     segment_id: str = Field(..., description="片段 ID")
     property_name: str = Field(..., description="属性名称")
-    time_offset: Union[str, int] = Field(..., description="时间偏移量")
+    time_offset: Union[str, int] = Field(..., description=TIME_OFFSET_DESC, examples=["0.5s", 500000])
     value: float = Field(..., description="属性值")
 
 class KeyframeBatch(BaseModel):
-    keyframes: List[Dict[str, Any]] = Field(..., description="关键帧列表")
+    keyframes: List[Dict[str, Any]] = Field(..., description=f"关键帧列表。每项中的 time_offset 遵循：{TIME_VALUE_DESC}")
 
 class TransitionAdd(BaseModel):
     segment_id: str = Field(..., description="片段 ID")
     transition_name: str = Field(..., description="转场名称")
-    duration: Optional[Union[str, int]] = Field(None, description="转场持续时间")
+    duration: Optional[Union[str, int]] = Field(None, description=f"转场持续时长。{DURATION_TIME_DESC}不填则使用转场默认值。", examples=["0.5s", 500000])
 
 class TransitionBatch(BaseModel):
-    transitions: List[Dict[str, Any]] = Field(..., description="转场列表")
+    transitions: List[Dict[str, Any]] = Field(..., description=f"转场列表。每项中的 duration 遵循：{TIME_VALUE_DESC}")
 
 class AudioFade(BaseModel):
     segment_id: str = Field(..., description="片段 ID")
-    in_duration: Union[str, int] = Field(..., description="淡入时长")
-    out_duration: Union[str, int] = Field(..., description="淡出时长")
+    in_duration: Union[str, int] = Field(..., description=f"淡入持续时长。{DURATION_TIME_DESC}", examples=["0.5s", 500000])
+    out_duration: Union[str, int] = Field(..., description=f"淡出持续时长。{DURATION_TIME_DESC}", examples=["0.5s", 500000])
 
 class TimeParse(BaseModel):
-    time_input: Union[str, float, int] = Field(..., description="时间字符串或微秒数")
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"time_input": "5s"},
+                {"time_input": "1m30s"},
+                {"time_input": 5000000}
+            ]
+        }
+    }
+
+    time_input: Union[str, float, int] = Field(..., description=TIME_VALUE_DESC, examples=["5s", "1m30s", 5000000])
 
 class TimeFormat(BaseModel):
-    microseconds: int = Field(..., description="微秒数")
+    microseconds: int = Field(..., description="微秒数（μs）。1 秒 = 1,000,000 微秒。", examples=[5000000])
 
 class TTSRequest(BaseModel):
     text: str = Field(..., description="要合成的文本（支持 SSML）")

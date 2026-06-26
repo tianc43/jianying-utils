@@ -2,12 +2,12 @@
   "openapi": "3.1.0",
   "info": {
     "title": "JianYing Draft API",
-    "description": "剪映草稿自动化 — 独立部署 REST API",
+    "description": "剪映草稿自动化 — 独立部署 REST API\n\n时间单位说明：剪映内部使用微秒（μs），1 秒 = 1,000,000 微秒。API 中 `start`、`duration`、`time_offset`、`in_duration`、`out_duration` 等字段通常支持两种写法：数字/纯数字字符串按微秒处理，带单位字符串如 `0.5s`、`5s`、`1m30s`、`1h2m3s` 会自动解析。批量接口中的 `end` 表示绝对结束时间，单位微秒，不是持续时长。",
     "version": "0.2.0"
   },
   "servers": [
     {
-      "url": "/",
+      "url": "http://localhost:8000",
       "description": "剪映草稿 API 服务器"
     }
   ],
@@ -102,7 +102,7 @@
           "草稿管理"
         ],
         "summary": "获取草稿信息",
-        "description": "查看指定草稿的基本信息（尺寸、时长等）",
+        "description": "查看指定草稿的基本信息（尺寸、时长等）\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "get_draft",
         "parameters": [
           {
@@ -407,7 +407,7 @@
           "视频"
         ],
         "summary": "添加视频",
-        "description": "添加单个视频或图片片段",
+        "description": "添加单个视频或图片片段\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_video",
         "parameters": [
           {
@@ -460,7 +460,7 @@
           "视频"
         ],
         "summary": "批量添加视频",
-        "description": "批量添加视频或图片片段",
+        "description": "批量添加视频或图片片段\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_videos_batch",
         "parameters": [
           {
@@ -513,7 +513,7 @@
           "音频"
         ],
         "summary": "添加音频",
-        "description": "添加单个音频片段",
+        "description": "添加单个音频片段\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_audio",
         "parameters": [
           {
@@ -566,7 +566,7 @@
           "音频"
         ],
         "summary": "批量添加音频",
-        "description": "批量添加音频片段",
+        "description": "批量添加音频片段\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_audios_batch",
         "parameters": [
           {
@@ -619,7 +619,7 @@
           "音频"
         ],
         "summary": "淡入淡出",
-        "description": "为音频片段添加淡入淡出效果",
+        "description": "为音频片段添加淡入淡出效果\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "audio_fade",
         "parameters": [
           {
@@ -725,7 +725,7 @@
           "字幕"
         ],
         "summary": "批量添加字幕",
-        "description": "批量添加字幕片段",
+        "description": "批量添加字幕片段\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_captions",
         "parameters": [
           {
@@ -778,7 +778,7 @@
           "特效"
         ],
         "summary": "添加场景特效",
-        "description": "向特效轨道添加场景特效",
+        "description": "向特效轨道添加场景特效\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "effect_scene",
         "parameters": [
           {
@@ -831,7 +831,7 @@
           "特效"
         ],
         "summary": "添加人物特效",
-        "description": "向特效轨道添加人物特效",
+        "description": "向特效轨道添加人物特效\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "effect_character",
         "parameters": [
           {
@@ -884,7 +884,7 @@
           "特效"
         ],
         "summary": "添加滤镜",
-        "description": "向滤镜轨道添加滤镜",
+        "description": "向滤镜轨道添加滤镜\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "effect_filter",
         "parameters": [
           {
@@ -937,7 +937,7 @@
           "特效"
         ],
         "summary": "批量添加特效",
-        "description": "批量添加视频特效",
+        "description": "批量添加视频特效\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "effect_batch",
         "parameters": [
           {
@@ -1043,7 +1043,7 @@
           "动画"
         ],
         "summary": "视频入场动画",
-        "description": "为视频片段添加入场动画",
+        "description": "为视频片段添加入场动画\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "anim_video_intro",
         "parameters": [
           {
@@ -1096,7 +1096,7 @@
           "动画"
         ],
         "summary": "视频出场动画",
-        "description": "为视频片段添加出场动画",
+        "description": "为视频片段添加出场动画\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "anim_video_outro",
         "parameters": [
           {
@@ -1149,7 +1149,7 @@
           "动画"
         ],
         "summary": "视频组合动画",
-        "description": "为视频片段添加组合动画",
+        "description": "为视频片段添加组合动画\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "anim_video_group",
         "parameters": [
           {
@@ -1361,7 +1361,7 @@
           "关键帧"
         ],
         "summary": "添加关键帧",
-        "description": "为片段属性添加关键帧",
+        "description": "为片段属性添加关键帧\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_keyframe",
         "parameters": [
           {
@@ -1414,7 +1414,7 @@
           "关键帧"
         ],
         "summary": "批量添加关键帧",
-        "description": "批量添加关键帧",
+        "description": "批量添加关键帧\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_keyframes_batch",
         "parameters": [
           {
@@ -1467,7 +1467,7 @@
           "转场"
         ],
         "summary": "添加转场",
-        "description": "为视频片段添加转场效果",
+        "description": "为视频片段添加转场效果\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_transition",
         "parameters": [
           {
@@ -1520,7 +1520,7 @@
           "转场"
         ],
         "summary": "批量添加转场",
-        "description": "批量添加转场效果",
+        "description": "批量添加转场效果\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "add_transitions_batch",
         "parameters": [
           {
@@ -1573,7 +1573,7 @@
           "工作流"
         ],
         "summary": "一键创建",
-        "description": "一键创建完整草稿内容（视频 + 音频 + 字幕 + 标题）",
+        "description": "一键创建完整草稿内容（视频 + 音频 + 字幕 + 标题）\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "workflow_simple",
         "parameters": [
           {
@@ -1626,7 +1626,7 @@
           "元数据"
         ],
         "summary": "查询转场列表",
-        "description": "查询可用转场（mode: 0=全部 1=VIP 2=免费）",
+        "description": "查询可用转场（mode: 0=全部 1=VIP 2=免费）\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "metadata_transitions",
         "parameters": [
           {
@@ -2185,7 +2185,7 @@
           "素材"
         ],
         "summary": "获取视频信息",
-        "description": "获取视频/图片素材的尺寸、时长等信息",
+        "description": "获取视频/图片素材的尺寸、时长等信息\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "material_video_info",
         "parameters": [
           {
@@ -2228,7 +2228,7 @@
           "素材"
         ],
         "summary": "获取音频时长",
-        "description": "获取音频文件的时长",
+        "description": "获取音频文件的时长\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "material_audio_duration",
         "parameters": [
           {
@@ -2271,7 +2271,7 @@
           "工具"
         ],
         "summary": "解析时间",
-        "description": "将时间字符串解析为微秒数",
+        "description": "将时间字符串解析为微秒数\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "time_parse",
         "requestBody": {
           "content": {
@@ -2313,7 +2313,7 @@
           "工具"
         ],
         "summary": "格式化时间",
-        "description": "将微秒数格式化为可读时间字符串",
+        "description": "将微秒数格式化为可读时间字符串\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "time_format",
         "requestBody": {
           "content": {
@@ -2419,7 +2419,7 @@
           "工具"
         ],
         "summary": "下载 TTS 音频",
-        "description": "下载 TTS 合成的音频文件（后续可切 OSS 预签名 URL）",
+        "description": "下载 TTS 合成的音频文件（后续可切 OSS 预签名 URL）\n\n时间单位：数字表示微秒（μs），如 5000000 = 5 秒；也可传字符串如 `5s`、`0.5s`、`1m30s`。",
         "operationId": "tts_download",
         "parameters": [
           {
@@ -2482,7 +2482,11 @@
               }
             ],
             "title": "Duration",
-            "description": "动画持续时间"
+            "description": "动画持续时长。持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。不填则使用动画默认值。",
+            "examples": [
+              "0.5s",
+              500000
+            ]
           }
         },
         "type": "object",
@@ -2509,7 +2513,12 @@
               }
             ],
             "title": "Start",
-            "description": "起始时间"
+            "description": "片段在时间线上的起始时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0s",
+              0,
+              5000000
+            ]
           },
           "duration": {
             "anyOf": [
@@ -2524,7 +2533,11 @@
               }
             ],
             "title": "Duration",
-            "description": "持续时间"
+            "description": "持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。不填则使用素材全长。",
+            "examples": [
+              "5s",
+              5000000
+            ]
           },
           "speed": {
             "type": "number",
@@ -2556,7 +2569,20 @@
           "audio_path",
           "start"
         ],
-        "title": "AudioAdd"
+        "title": "AudioAdd",
+        "examples": [
+          {
+            "audio_path": "https://example.com/audio.mp3",
+            "duration": "5s",
+            "start": "0s",
+            "volume": 0.8
+          },
+          {
+            "audio_path": "D:/materials/bgm.mp3",
+            "duration": 3000000,
+            "start": 5000000
+          }
+        ]
       },
       "AudioBatch": {
         "properties": {
@@ -2567,7 +2593,7 @@
             },
             "type": "array",
             "title": "Audio Infos",
-            "description": "音频信息列表"
+            "description": "音频信息列表。每项至少包含 audio_path、start、end；start/end 为微秒（μs），end 是绝对结束时间，不是持续时长。示例：[{\"audio_path\":\"/path/a.mp3\",\"start\":0,\"end\":5000000}]。"
           },
           "track_name": {
             "anyOf": [
@@ -2605,7 +2631,11 @@
               }
             ],
             "title": "In Duration",
-            "description": "淡入时长"
+            "description": "淡入持续时长。持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0.5s",
+              500000
+            ]
           },
           "out_duration": {
             "anyOf": [
@@ -2617,7 +2647,11 @@
               }
             ],
             "title": "Out Duration",
-            "description": "淡出时长"
+            "description": "淡出持续时长。持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0.5s",
+              500000
+            ]
           }
         },
         "type": "object",
@@ -2663,12 +2697,18 @@
           "start": {
             "type": "integer",
             "title": "Start",
-            "description": "起始时间（微秒）"
+            "description": "起始时间，单位微秒（μs）。1 秒 = 1,000,000 微秒。",
+            "examples": [
+              0
+            ]
           },
           "end": {
             "type": "integer",
             "title": "End",
-            "description": "结束时间（微秒）"
+            "description": "结束时间，单位微秒（μs）。注意这是绝对结束时间，不是持续时长；持续时长 = end - start。",
+            "examples": [
+              5000000
+            ]
           }
         },
         "type": "object",
@@ -2842,7 +2882,25 @@
         "required": [
           "captions"
         ],
-        "title": "CaptionsAdd"
+        "title": "CaptionsAdd",
+        "examples": [
+          {
+            "captions": [
+              {
+                "end": 2500000,
+                "start": 0,
+                "text": "第一句字幕"
+              },
+              {
+                "end": 5000000,
+                "start": 2500000,
+                "text": "第二句字幕"
+              }
+            ],
+            "font_size": 5,
+            "text_color": "#FFFFFF"
+          }
+        ]
       },
       "DraftCreate": {
         "properties": {
@@ -2964,7 +3022,11 @@
           },
           "duration": {
             "type": "integer",
-            "description": "草稿总时长（微秒）"
+            "description": "草稿总时长（微秒）",
+            "examples": [
+              "3s",
+              3000000
+            ]
           }
         },
         "additionalProperties": false
@@ -3065,7 +3127,11 @@
               }
             ],
             "title": "Start",
-            "description": "起始时间"
+            "description": "片段在时间线上的起始时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0s",
+              0
+            ]
           },
           "duration": {
             "anyOf": [
@@ -3077,7 +3143,11 @@
               }
             ],
             "title": "Duration",
-            "description": "持续时间"
+            "description": "持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "params": {
             "anyOf": [
@@ -3113,7 +3183,17 @@
           "start",
           "duration"
         ],
-        "title": "EffectAdd"
+        "title": "EffectAdd",
+        "examples": [
+          {
+            "duration": "3s",
+            "effect_name": "金粉",
+            "params": [
+              50
+            ],
+            "start": "0s"
+          }
+        ]
       },
       "EffectBatch": {
         "properties": {
@@ -3124,7 +3204,7 @@
             },
             "type": "array",
             "title": "Effect Infos",
-            "description": "特效列表"
+            "description": "特效列表。每项中的 start、duration 均遵循：时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。"
           },
           "track_name": {
             "anyOf": [
@@ -3162,7 +3242,11 @@
               }
             ],
             "title": "Start",
-            "description": "起始时间"
+            "description": "片段在时间线上的起始时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0s",
+              0
+            ]
           },
           "duration": {
             "anyOf": [
@@ -3174,7 +3258,11 @@
               }
             ],
             "title": "Duration",
-            "description": "持续时间"
+            "description": "持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "intensity": {
             "type": "number",
@@ -3281,7 +3369,11 @@
               }
             ],
             "title": "Time Offset",
-            "description": "时间偏移量"
+            "description": "相对片段起点的时间偏移。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0.5s",
+              500000
+            ]
           },
           "value": {
             "type": "number",
@@ -3307,7 +3399,7 @@
             },
             "type": "array",
             "title": "Keyframes",
-            "description": "关键帧列表"
+            "description": "关键帧列表。每项中的 time_offset 遵循：时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。"
           }
         },
         "type": "object",
@@ -3329,11 +3421,18 @@
           },
           "duration": {
             "type": "integer",
-            "description": "音频时长（微秒）"
+            "description": "音频时长（微秒）",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "duration_seconds": {
             "type": "number",
-            "description": "音频时长（秒）"
+            "description": "音频时长（秒）",
+            "examples": [
+              5.0
+            ]
           },
           "material_name": {
             "type": "string",
@@ -3359,7 +3458,11 @@
           },
           "duration": {
             "type": "integer",
-            "description": "时长（微秒）"
+            "description": "时长（微秒）",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "width": {
             "type": "integer",
@@ -3409,11 +3512,17 @@
           },
           "duration_us": {
             "type": "integer",
-            "description": "持续时间（微秒，动画类）"
+            "description": "持续时间（微秒，动画类）",
+            "examples": [
+              5000000
+            ]
           },
           "duration_seconds": {
             "type": "number",
-            "description": "持续时间（秒，动画类）"
+            "description": "持续时间（秒，动画类）",
+            "examples": [
+              5.0
+            ]
           },
           "params": {
             "type": "array",
@@ -3563,11 +3672,18 @@
           },
           "duration": {
             "type": "integer",
-            "description": "草稿总时长（微秒）"
+            "description": "草稿总时长（微秒）",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "duration_seconds": {
             "type": "number",
-            "description": "草稿总时长（秒）"
+            "description": "草稿总时长（秒）",
+            "examples": [
+              5.0
+            ]
           }
         },
         "additionalProperties": false
@@ -3589,7 +3705,11 @@
               }
             ],
             "title": "Start",
-            "description": "起始时间"
+            "description": "片段在时间线上的起始时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0s",
+              0
+            ]
           },
           "duration": {
             "anyOf": [
@@ -3601,7 +3721,11 @@
               }
             ],
             "title": "Duration",
-            "description": "持续时间"
+            "description": "持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "transform_x": {
             "type": "number",
@@ -3658,7 +3782,18 @@
           "start",
           "duration"
         ],
-        "title": "StickerAdd"
+        "title": "StickerAdd",
+        "examples": [
+          {
+            "duration": "2s",
+            "resource_id": "sticker_resource_id",
+            "scale_x": 1,
+            "scale_y": 1,
+            "start": "1s",
+            "transform_x": 0,
+            "transform_y": 0
+          }
+        ]
       },
       "TTSRequest": {
         "properties": {
@@ -3734,7 +3869,10 @@
             "type": "number",
             "title": "Duration Seconds",
             "description": "合成耗时（秒）",
-            "default": 0.0
+            "default": 0.0,
+            "examples": [
+              5.0
+            ]
           },
           "voice": {
             "type": "string",
@@ -3827,7 +3965,11 @@
               }
             ],
             "title": "Start",
-            "description": "起始时间"
+            "description": "片段在时间线上的起始时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0s",
+              0
+            ]
           },
           "duration": {
             "anyOf": [
@@ -3839,7 +3981,11 @@
               }
             ],
             "title": "Duration",
-            "description": "持续时间"
+            "description": "持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "3s",
+              3000000
+            ]
           },
           "font": {
             "anyOf": [
@@ -3984,14 +4130,26 @@
           "start",
           "duration"
         ],
-        "title": "TextAdd"
+        "title": "TextAdd",
+        "examples": [
+          {
+            "duration": "3s",
+            "font_size": 10,
+            "start": "0s",
+            "text": "标题文本",
+            "text_color": "#FFFFFF"
+          }
+        ]
       },
       "TimeFormat": {
         "properties": {
           "microseconds": {
             "type": "integer",
             "title": "Microseconds",
-            "description": "微秒数"
+            "description": "微秒数（μs）。1 秒 = 1,000,000 微秒。",
+            "examples": [
+              5000000
+            ]
           }
         },
         "type": "object",
@@ -4034,14 +4192,30 @@
               }
             ],
             "title": "Time Input",
-            "description": "时间字符串或微秒数"
+            "description": "时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "5s",
+              "1m30s",
+              5000000
+            ]
           }
         },
         "type": "object",
         "required": [
           "time_input"
         ],
-        "title": "TimeParse"
+        "title": "TimeParse",
+        "examples": [
+          {
+            "time_input": "5s"
+          },
+          {
+            "time_input": "1m30s"
+          },
+          {
+            "time_input": 5000000
+          }
+        ]
       },
       "TimeParseResponse": {
         "type": "object",
@@ -4053,7 +4227,10 @@
           "microseconds": {
             "type": "integer",
             "description": "解析后的微秒数",
-            "example": 5000000
+            "example": 5000000,
+            "examples": [
+              5000000
+            ]
           },
           "message": {
             "type": "string",
@@ -4197,7 +4374,11 @@
               }
             ],
             "title": "Duration",
-            "description": "转场持续时间"
+            "description": "转场持续时长。持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。不填则使用转场默认值。",
+            "examples": [
+              "0.5s",
+              500000
+            ]
           }
         },
         "type": "object",
@@ -4216,7 +4397,7 @@
             },
             "type": "array",
             "title": "Transitions",
-            "description": "转场列表"
+            "description": "转场列表。每项中的 duration 遵循：时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。"
           }
         },
         "type": "object",
@@ -4282,7 +4463,12 @@
               }
             ],
             "title": "Start",
-            "description": "起始时间（微秒或时间字符串如 5s）"
+            "description": "片段在时间线上的起始时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。",
+            "examples": [
+              "0s",
+              0,
+              5000000
+            ]
           },
           "duration": {
             "anyOf": [
@@ -4297,7 +4483,11 @@
               }
             ],
             "title": "Duration",
-            "description": "持续时间"
+            "description": "持续时长，不是结束时间。时间值。剪映内部单位为微秒（μs），1 秒 = 1,000,000 微秒。传数字或纯数字字符串时按微秒处理，例如 5000000 表示 5 秒；也可传带单位字符串，例如 \"0.5s\"、\"5s\"、\"1m30s\"、\"1h2m3s\"。不填则自动根据素材时长计算。",
+            "examples": [
+              "5s",
+              5000000
+            ]
           },
           "speed": {
             "type": "number",
@@ -4500,7 +4690,20 @@
           "video_path",
           "start"
         ],
-        "title": "VideoAdd"
+        "title": "VideoAdd",
+        "examples": [
+          {
+            "duration": "5s",
+            "start": "0s",
+            "track_name": "main",
+            "video_path": "https://example.com/image.png"
+          },
+          {
+            "duration": 3000000,
+            "start": 5000000,
+            "video_path": "D:/materials/clip.mp4"
+          }
+        ]
       },
       "VideoBatch": {
         "properties": {
@@ -4511,7 +4714,7 @@
             },
             "type": "array",
             "title": "Video Infos",
-            "description": "视频信息列表"
+            "description": "视频/图片信息列表。每项至少包含 video_path、start、end；start/end 为微秒（μs），end 是绝对结束时间，不是持续时长。示例：[{\"video_path\":\"/path/a.png\",\"start\":0,\"end\":5000000}]。"
           },
           "track_name": {
             "anyOf": [

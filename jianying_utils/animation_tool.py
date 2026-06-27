@@ -4,11 +4,14 @@
 """
 
 from typing import Optional, Dict, Any, Union
+from uuid import uuid4
 
 from pyJianYingDraft import (
     IntroType, OutroType, GroupAnimationType,
     TextIntro, TextOutro, TextLoopAnim
 )
+
+from pyJianYingDraft.animation import SegmentAnimations, VideoAnimation, Text_animation
 
 from . import _context
 
@@ -221,6 +224,9 @@ def _add_video_animation(folder_path, draft_name, segment_id, anim_type, duratio
     script = _context.load_script(folder_path, draft_name)
     segment = _find_segment(script, segment_id)
     if segment is None:
+        if _add_imported_animation(script, segment_id, anim_type, duration, is_text=False):
+            _context.save_script(script)
+            return _context.make_result(True, f"视频动画 ({type(anim_type).__name__}) 已添加")
         return _context.make_result(False, f"未找到片段 {segment_id}")
 
     dur = _parse_time(duration) if duration is not None else None
@@ -243,6 +249,9 @@ def _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration
     script = _context.load_script(folder_path, draft_name)
     segment = _find_segment(script, segment_id)
     if segment is None:
+        if _add_imported_animation(script, segment_id, anim_type, duration, is_text=True):
+            _context.save_script(script)
+            return _context.make_result(True, f"文本动画 ({type(anim_type).__name__}) 已添加")
         return _context.make_result(False, f"未找到片段 {segment_id}")
 
     dur = _parse_time(duration) if duration is not None else None
@@ -257,3 +266,71 @@ def _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration
 
     type_name = type(anim_type).__name__
     return _context.make_result(True, f"文本动画 ({type_name}) 已添加")
+
+
+def _add_imported_animation(script, segment_id, anim_type, duration, is_text: bool) -> bool:
+    """Attach animation to an already-saved/imported segment raw dict."""
+    seg_data = None
+    seg_obj = None
+    for imp_track in script.imported_tracks:
+        for index, item in enumerate(imp_track.raw_data.get("segments", [])):
+            if item.get("id") == segment_id:
+                seg_data = item
+                if hasattr(imp_track, "segments") and index < len(imp_track.segments):
+                    seg_obj = imp_track.segments[index]
+                break
+        if seg_data is not None:
+            break
+    if seg_data is None:
+        return False
+
+    target_duration = int((seg_data.get("target_timerange") or {}).get("duration") or 0)
+    dur = _parse_time(duration) if duration is not None else None
+    animation = _make_animation(anim_type, dur, target_duration, is_text)
+    animation_id = uuid4().hex
+    anim_block = {
+        "id": animation_id,
+        "type": "sticker_animation",
+        "multi_language_current": "none",
+        "animations": [animation.export_json()],
+    }
+
+    refs = seg_data.setdefault("extra_material_refs", [])
+    if animation_id not in refs:
+        refs.append(animation_id)
+    if seg_obj is not None:
+        seg_obj.raw_data = seg_data
+
+    existing = script.imported_materials.setdefault("material_animations", [])
+    existing[:] = [item for item in existing if item.get("id") != animation_id]
+    existing.append(anim_block)
+    return True
+
+
+def _make_animation(anim_type, duration, target_duration: int, is_text: bool):
+    if is_text:
+        duration = duration if duration is not None else anim_type.value.duration
+        duration = min(duration, target_duration) if target_duration else duration
+        if isinstance(anim_type, TextIntro):
+            start = 0
+        elif isinstance(anim_type, TextOutro):
+            start = max(0, target_duration - duration)
+        elif isinstance(anim_type, TextLoopAnim):
+            start = 0
+            duration = target_duration or duration
+        else:
+            raise TypeError(f"Invalid text animation type {type(anim_type)}")
+        return Text_animation(anim_type, start, duration)
+
+    if isinstance(anim_type, IntroType):
+        start = 0
+        duration = duration or anim_type.value.duration
+    elif isinstance(anim_type, OutroType):
+        duration = duration or anim_type.value.duration
+        start = max(0, target_duration - duration)
+    elif isinstance(anim_type, GroupAnimationType):
+        start = 0
+        duration = duration or target_duration
+    else:
+        raise TypeError(f"Invalid video animation type {type(anim_type)}")
+    return VideoAnimation(anim_type, start, duration)

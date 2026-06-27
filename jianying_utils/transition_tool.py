@@ -6,6 +6,7 @@
 from typing import Optional, Dict, Any, List, Union
 
 from pyJianYingDraft import TransitionType
+from pyJianYingDraft.video_segment import Transition
 
 from . import _context
 
@@ -41,11 +42,14 @@ class TransitionTool:
 
             script = _context.load_script(folder_path, draft_name)
             segment = _find_segment(script, segment_id)
+            dur = _parse_time(duration) if duration is not None else None
 
             if segment is None:
+                if _add_imported_transition(script, segment_id, trans_type, dur):
+                    _context.save_script(script)
+                    return _context.make_result(True, f"转场 '{transition_name}' 已添加")
                 return _context.make_result(False, f"未找到片段 {segment_id}")
 
-            dur = _parse_time(duration) if duration is not None else None
             segment.add_transition(trans_type, duration=dur)
             _context.save_script(script)
 
@@ -83,11 +87,13 @@ class TransitionTool:
                 except ValueError:
                     continue
 
+                dur_val = _parse_time(dur) if dur is not None else None
                 segment = _find_segment(script, seg_id)
                 if segment is None:
+                    if _add_imported_transition(script, seg_id, trans_type, dur_val):
+                        count += 1
                     continue
 
-                dur_val = _parse_time(dur) if dur is not None else None
                 segment.add_transition(trans_type, duration=dur_val)
                 count += 1
 
@@ -117,3 +123,35 @@ def _find_segment(script, segment_id):
             if seg_data.get("id") == segment_id:
                 return None  # 原始数据不可编辑
     return None
+
+
+def _add_imported_transition(script, segment_id, trans_type, duration) -> bool:
+    """Attach transition to an already-saved/imported video segment raw dict."""
+    seg_data = None
+    seg_obj = None
+    for imp_track in script.imported_tracks:
+        for index, item in enumerate(imp_track.raw_data.get("segments", [])):
+            if item.get("id") == segment_id:
+                seg_data = item
+                if hasattr(imp_track, "segments") and index < len(imp_track.segments):
+                    seg_obj = imp_track.segments[index]
+                break
+        if seg_data is not None:
+            break
+    if seg_data is None:
+        return False
+
+    if seg_data.get("transition"):
+        raise ValueError("当前片段已有转场, 不能再添加新的转场")
+
+    transition = Transition(trans_type, duration=duration)
+    transition_json = transition.export_json()
+    seg_data["transition"] = transition_json
+    refs = seg_data.setdefault("extra_material_refs", [])
+    if transition.global_id not in refs:
+        refs.append(transition.global_id)
+    if seg_obj is not None:
+        seg_obj.raw_data = seg_data
+
+    script.imported_materials.setdefault("transitions", []).append(transition_json)
+    return True

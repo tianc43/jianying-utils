@@ -12,6 +12,9 @@ from __future__ import annotations
 import os
 import uuid
 import re
+import base64
+import binascii
+import hashlib
 from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
 
@@ -110,6 +113,13 @@ _TTS_DIR = os.environ.get("JIANYING_TTS_DIR", "")
 if _TTS_DIR:
     os.makedirs(_TTS_DIR, exist_ok=True)
 
+# Image material output directory. Defaults under project root so /static URLs work.
+_IMAGE_DIR = os.environ.get("JIANYING_IMAGE_DIR", str(_PROJECT_ROOT / "uploads" / "images"))
+_IMAGE_MAX_BYTES = int(os.environ.get("JIANYING_IMAGE_MAX_BYTES", str(20 * 1024 * 1024)))
+os.makedirs(_IMAGE_DIR, exist_ok=True)
+_IMAGE_CHUNK_DIR = os.environ.get("JIANYING_IMAGE_CHUNK_DIR", os.path.join(_IMAGE_DIR, "_chunks"))
+os.makedirs(_IMAGE_CHUNK_DIR, exist_ok=True)
+
 # 草稿注册表文件（多 worker 共享，通过文件系统同步）
 _REGISTRY_FILE = os.path.join(DRAFTS_DIR, "_draft_registry.json")
 
@@ -147,6 +157,74 @@ def _resolve(draft_id: str) -> tuple:
 
 def _ok(**kw) -> dict:
     return {"success": True, **kw}
+
+def _safe_filename_stem(value: str) -> str:
+    stem = os.path.splitext(os.path.basename(value or ""))[0]
+    stem = re.sub(r"[^A-Za-z0-9_.-]+", "-", stem).strip(".-_")
+    return stem[:80] or "image"
+
+def _decode_b64_json(value: str) -> bytes:
+    if not value:
+        raise HTTPException(400, "b64_json 不能为空")
+    payload = value.strip()
+    if payload.startswith("data:"):
+        _, _, payload = payload.partition(",")
+    payload = "".join(payload.split())
+    try:
+        data = base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(400, "b64_json 不是有效的 Base64 数据") from exc
+    if not data:
+        raise HTTPException(400, "图片数据为空")
+    if len(data) > _IMAGE_MAX_BYTES:
+        raise HTTPException(413, f"图片超过大小限制: {_IMAGE_MAX_BYTES} bytes")
+    return data
+
+def _detect_image(data: bytes) -> tuple[str, str]:
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png", "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg", "image/jpeg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "gif", "image/gif"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp", "image/webp"
+    raise HTTPException(415, "仅支持 PNG/JPEG/WebP/GIF 图片")
+
+def _project_static_url(path: str) -> str:
+    try:
+        relative = Path(path).resolve().relative_to(_PROJECT_ROOT.resolve()).as_posix()
+    except ValueError:
+        return ""
+    return f"{DEPLOY_URL}/static/{relative}"
+
+def _save_image_bytes(data: bytes, filename_hint: Optional[str] = None) -> dict:
+    ext, media_type = _detect_image(data)
+    digest = hashlib.sha256(data).hexdigest()
+    stem = _safe_filename_stem(filename_hint or f"image-{digest[:12]}")
+    if not stem.endswith(digest[:12]):
+        stem = f"{stem}-{digest[:12]}"
+    filename = f"{stem}.{ext}"
+    file_path = os.path.abspath(os.path.join(_IMAGE_DIR, filename))
+
+    image_root = os.path.abspath(_IMAGE_DIR)
+    if os.path.commonpath([image_root, file_path]) != image_root:
+        raise HTTPException(400, "无效的文件名")
+
+    if not os.path.isfile(file_path):
+        with open(file_path, "wb") as output:
+            output.write(data)
+
+    return _ok(
+        message="图片已保存",
+        filename=filename,
+        file_path=file_path,
+        download_url=f"{DEPLOY_URL}/material/images/download/{filename}",
+        static_url=_project_static_url(file_path),
+        media_type=media_type,
+        size=len(data),
+        sha256=digest,
+    )
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Models
@@ -450,6 +528,28 @@ class TTSRequest(BaseModel):
     pitch: str = Field("+0Hz", description="音调，如 +5Hz 升高，-5Hz 降低")
     output_path: Optional[str] = Field(None, description="输出文件路径（可选）")
 
+class ImageB64SaveRequest(BaseModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+                    "filename": "generated-cover.png"
+                }
+            ]
+        }
+    }
+
+    b64_json: str = Field(..., description="Base64 图片数据，可传纯 b64_json 或 data URL")
+    filename: Optional[str] = Field(None, description="期望文件名；服务端会清理路径并按真实图片类型修正扩展名")
+
+class ImageB64ChunkSaveRequest(BaseModel):
+    upload_id: str = Field(..., description="分片上传 ID，同一张图片保持一致")
+    index: int = Field(..., description="当前分片序号，从 0 开始")
+    total: int = Field(..., description="分片总数")
+    chunk: str = Field(..., description="当前 Base64 文本分片")
+    filename: Optional[str] = Field(None, description="期望文件名；仅最后一个分片用于保存结果")
+
 class TTSVoiceItem(BaseModel):
     ShortName: str = Field(..., description="发音人标识")
     DisplayName: str = Field(..., description="显示名称")
@@ -463,6 +563,17 @@ class TTSSynthesizeResponse(BaseModel):
     download_url: str = Field("", description="音频下载 URL")
     duration_seconds: float = Field(0.0, description="合成耗时（秒）")
     voice: str = Field("", description="使用的发音人")
+
+class ImageSaveResponse(BaseModel):
+    success: bool = Field(True, description="操作是否成功")
+    message: str = Field("", description="操作结果消息")
+    filename: str = Field("", description="保存后的文件名")
+    file_path: str = Field("", description="服务端本地文件路径")
+    download_url: str = Field("", description="图片下载 URL")
+    static_url: str = Field("", description="可直接作为素材路径使用的静态 URL")
+    media_type: str = Field("", description="图片 MIME 类型")
+    size: int = Field(0, description="图片字节数")
+    sha256: str = Field("", description="图片内容 SHA256")
 
 class TTSVoicesResponse(BaseModel):
     success: bool = Field(True, description="操作是否成功")
@@ -1126,6 +1237,75 @@ def material_video_info(path: str):
 def material_audio_duration(path: str):
     """获取音频文件的时长"""
     return MaterialTool.get_audio_duration(path)
+
+@app.post("/material/images", tags=["素材"], summary="保存 Base64 图片素材", response_model=ImageSaveResponse)
+def material_save_image(body: ImageB64SaveRequest):
+    """Decode b64_json image data, save it, and return URLs usable by workflows."""
+    data = _decode_b64_json(body.b64_json)
+    return _save_image_bytes(data, body.filename)
+
+@app.post("/material/images/chunks", tags=["素材"], summary="分片保存 Base64 图片素材")
+def material_save_image_chunk(body: ImageB64ChunkSaveRequest):
+    """Accept small b64_json chunks and save the image after the final chunk."""
+    upload_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", body.upload_id or "").strip(".-_")
+    if not upload_id:
+        raise HTTPException(400, "upload_id 不能为空")
+    if body.total <= 0 or body.total > 1000:
+        raise HTTPException(400, "total 必须在 1 到 1000 之间")
+    if body.index < 0 or body.index >= body.total:
+        raise HTTPException(400, "index 超出范围")
+
+    chunk_dir = os.path.abspath(os.path.join(_IMAGE_CHUNK_DIR, upload_id))
+    chunk_root = os.path.abspath(_IMAGE_CHUNK_DIR)
+    if os.path.commonpath([chunk_root, chunk_dir]) != chunk_root:
+        raise HTTPException(400, "无效的 upload_id")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    chunk = "".join(str(body.chunk or "").split())
+    if body.index == 0 and chunk.startswith("data:"):
+        _, _, chunk = chunk.partition(",")
+    if not chunk:
+        raise HTTPException(400, "chunk 不能为空")
+
+    chunk_path = os.path.join(chunk_dir, f"{body.index:06d}.part")
+    with open(chunk_path, "w", encoding="ascii") as output:
+        output.write(chunk)
+
+    received = len([name for name in os.listdir(chunk_dir) if name.endswith(".part")])
+    if received < body.total:
+        return _ok(message="图片分片已接收", upload_id=upload_id, received=received, total=body.total, complete=False)
+
+    parts = []
+    for index in range(body.total):
+        part_path = os.path.join(chunk_dir, f"{index:06d}.part")
+        if not os.path.isfile(part_path):
+            raise HTTPException(400, f"缺少图片分片: {index}")
+        parts.append(Path(part_path).read_text(encoding="ascii"))
+
+    data = _decode_b64_json("".join(parts))
+    result = _save_image_bytes(data, body.filename)
+    result.update(upload_id=upload_id, received=received, total=body.total, complete=True)
+
+    for name in os.listdir(chunk_dir):
+        os.remove(os.path.join(chunk_dir, name))
+    os.rmdir(chunk_dir)
+    return result
+
+@app.get("/material/images/download/{filename}", tags=["素材"], summary="下载图片素材")
+def material_download_image(filename: str):
+    """Download an image saved by POST /material/images."""
+    safe_name = os.path.basename(filename)
+    file_path = os.path.abspath(os.path.join(_IMAGE_DIR, safe_name))
+    image_root = os.path.abspath(_IMAGE_DIR)
+    if os.path.commonpath([image_root, file_path]) != image_root or not os.path.isfile(file_path):
+        raise HTTPException(404, f"图片文件不存在: {safe_name}")
+    _, media_type = _detect_image(Path(file_path).read_bytes()[:32])
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        filename=safe_name,
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'}
+    )
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 时间工具

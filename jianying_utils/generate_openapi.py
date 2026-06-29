@@ -244,6 +244,21 @@ RESPONSE_SCHEMAS = {
         },
         "additionalProperties": False
     },
+    "ImageSaveResponse": {
+        "type": "object",
+        "properties": {
+            "success": {"type": "boolean", "description": "操作是否成功"},
+            "message": {"type": "string", "description": "操作结果消息"},
+            "filename": {"type": "string", "description": "保存后的文件名"},
+            "file_path": {"type": "string", "description": "服务端本地文件路径"},
+            "download_url": {"type": "string", "description": "图片下载 URL"},
+            "static_url": {"type": "string", "description": "可直接作为素材路径使用的静态 URL"},
+            "media_type": {"type": "string", "description": "图片 MIME 类型"},
+            "size": {"type": "integer", "description": "图片字节数"},
+            "sha256": {"type": "string", "description": "图片内容 SHA256"}
+        },
+        "additionalProperties": False
+    },
     "MetadataListResponse": {
         "type": "object",
         "properties": {
@@ -311,6 +326,7 @@ PATH_RESPONSE_MAP = {
     ("/metadata/audio-effects", "get"): "MetadataListResponse",
     ("/material/video-info", "get"): "MaterialVideoInfoResponse",
     ("/material/audio-duration", "get"): "MaterialAudioDurationResponse",
+    ("/material/images", "post"): "ImageSaveResponse",
     ("/util/time/parse", "post"): "TimeParseResponse",
     ("/util/time/format", "post"): "TimeFormatResponse",
 }
@@ -489,6 +505,7 @@ def _describe_schema(name: str) -> str:
         "SimpleWorkflowResponse": "一键创建完成",
         "MaterialVideoInfoResponse": "视频/图片素材信息",
         "MaterialAudioDurationResponse": "音频时长信息",
+        "ImageSaveResponse": "图片保存结果",
         "MetadataListResponse": "元数据查询结果",
     }
     return descriptions.get(name, "Successful Response")

@@ -1487,6 +1487,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /material/images:
+    post:
+      tags:
+      - 素材
+      summary: 保存 Base64 图片素材
+      description: Decode b64_json image data, save it, and return URLs usable by
+        workflows.
+      operationId: material_save_image
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageB64SaveRequest'
+        required: true
+      responses:
+        '200':
+          description: 图片保存结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageSaveResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /material/images/download/{filename}:
+    get:
+      tags:
+      - 素材
+      summary: 下载图片素材
+      description: Download an image saved by POST /material/images.
+      operationId: material_download_image
+      parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Filename
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /util/time/parse:
     post:
       tags:
@@ -2223,6 +2276,56 @@ components:
         active_drafts:
           type: integer
           description: 当前活跃草稿数
+      additionalProperties: false
+    ImageB64SaveRequest:
+      properties:
+        b64_json:
+          type: string
+          title: B64 Json
+          description: Base64 图片数据，可传纯 b64_json 或 data URL
+        filename:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Filename
+          description: 期望文件名；服务端会清理路径并按真实图片类型修正扩展名
+      type: object
+      required:
+      - b64_json
+      title: ImageB64SaveRequest
+      examples:
+      - b64_json: iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...
+        filename: generated-cover.png
+    ImageSaveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        filename:
+          type: string
+          description: 保存后的文件名
+        file_path:
+          type: string
+          description: 服务端本地文件路径
+        download_url:
+          type: string
+          description: 图片下载 URL
+        static_url:
+          type: string
+          description: 可直接作为素材路径使用的静态 URL
+        media_type:
+          type: string
+          description: 图片 MIME 类型
+        size:
+          type: integer
+          description: 图片字节数
+        sha256:
+          type: string
+          description: 图片内容 SHA256
       additionalProperties: false
     KeyframeAdd:
       properties:

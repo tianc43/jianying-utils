@@ -141,10 +141,42 @@ uvicorn jianying_utils.server:app --host 0.0.0.0 --port 8000
 | | `GET /metadata/audio-effects` | 音频特效列表 |
 | **素材** | `GET /material/video-info` | 获取视频信息 |
 | | `GET /material/audio-duration` | 获取音频时长 |
+| | `POST /material/images` | 保存 Base64 图片并返回下载 URL |
 | **工具** | `POST /util/time/parse` | 解析时间 |
 | | `POST /util/time/format` | 格式化时间 |
 | | `POST /util/tts` | 文本转语音（Edge-TTS） |
 | | `GET /util/tts/voices` | 发音人列表 |
+
+## Dify 保存 b64_json 图片素材
+
+如果上游 HTTP 节点返回 OpenAI 图片接口一类的 `b64_json`，推荐不要在 Dify 里长期传递整段 Base64。先调用后台保存成文件，再把返回的 URL 传给后续剪映接口：
+
+```http
+POST /material/images
+Content-Type: application/json
+
+{
+  "b64_json": "{{ image_response.data[0].b64_json }}",
+  "filename": "cover.png"
+}
+```
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "filename": "cover-a1b2c3d4e5f6.png",
+  "download_url": "http://localhost:8000/material/images/download/cover-a1b2c3d4e5f6.png",
+  "static_url": "http://localhost:8000/static/uploads/images/cover-a1b2c3d4e5f6.png",
+  "file_path": "C:/.../uploads/images/cover-a1b2c3d4e5f6.png",
+  "media_type": "image/png",
+  "size": 123456,
+  "sha256": "..."
+}
+```
+
+后续 `POST /drafts/{id}/videos` 的 `video_path` 优先用 `static_url`；它会被服务端解析为本地文件，避免再次下载。跨机器部署或图片目录不在项目根目录时，用 `download_url` 更稳。默认图片保存目录是 `uploads/images`，可用 `JIANYING_IMAGE_DIR` 覆盖；单张图片默认限制 20MB，可用 `JIANYING_IMAGE_MAX_BYTES` 覆盖。
 
 ## 主题开头与片段级效果
 

@@ -16,6 +16,7 @@ class MaterialTool:
     """素材管理工具类"""
 
     @staticmethod
+    @_context.catch_errors("获取素材信息")
     def get_video_info(path: str) -> Dict[str, Any]:
         """获取视频/图片素材信息
 
@@ -25,23 +26,21 @@ class MaterialTool:
         Returns:
             dict: {"success": bool, "duration": int, "width": int, "height": int, "type": str}
         """
-        try:
-            path = resolve_material_path(path, ".jpg", "image/*,video/*;q=0.9,*/*;q=0.8")
-            mat = VideoMaterial(path)
-            return _context.make_result(
-                True,
-                f"素材信息: {mat.material_name}",
-                duration=mat.duration,
-                width=mat.width,
-                height=mat.height,
-                type=mat.material_type,
-                material_name=mat.material_name,
-                path=mat.path
-            )
-        except Exception as e:
-            return _context.make_result(False, f"获取素材信息失败: {e}")
+        path = resolve_material_path(path, ".jpg", "image/*,video/*;q=0.9,*/*;q=0.8")
+        mat = VideoMaterial(path)
+        return _context.make_result(
+            True,
+            f"素材信息: {mat.material_name}",
+            duration=mat.duration,
+            width=mat.width,
+            height=mat.height,
+            type=mat.material_type,
+            material_name=mat.material_name,
+            path=mat.path
+        )
 
     @staticmethod
+    @_context.catch_errors("获取音频时长")
     def get_audio_duration(path: str) -> Dict[str, Any]:
         """获取音频素材时长
 
@@ -51,20 +50,17 @@ class MaterialTool:
         Returns:
             dict: {"success": bool, "duration": int, "duration_seconds": float}
         """
-        try:
-            path = resolve_material_path(path, ".mp3", "audio/mpeg,audio/*;q=0.9,*/*;q=0.8")
-            mat = AudioMaterial(path)
-            duration_sec = mat.duration / 1_000_000.0
-            return _context.make_result(
-                True,
-                f"音频时长: {duration_sec:.2f}s",
-                duration=mat.duration,
-                duration_seconds=round(duration_sec, 3),
-                material_name=mat.material_name,
-                path=mat.path
-            )
-        except Exception as e:
-            return _context.make_result(False, f"获取音频时长失败: {e}")
+        path = resolve_material_path(path, ".mp3", "audio/mpeg,audio/*;q=0.9,*/*;q=0.8")
+        mat = AudioMaterial(path)
+        duration_sec = mat.duration / 1_000_000.0
+        return _context.make_result(
+            True,
+            f"音频时长: {duration_sec:.2f}s",
+            duration=mat.duration,
+            duration_seconds=round(duration_sec, 3),
+            material_name=mat.material_name,
+            path=mat.path
+        )
 
     @staticmethod
     def create_crop_settings(upper_left_x: float = 0.0, upper_left_y: float = 0.0,

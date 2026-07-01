@@ -13,6 +13,7 @@ class ExportTool:
     """草稿导出/序列化工具类"""
 
     @staticmethod
+    @_context.catch_errors("导出")
     def dump_to_file(folder_path: str, draft_name: str,
                      output_path: str) -> Dict[str, Any]:
         """将草稿导出为 JSON 文件
@@ -25,14 +26,12 @@ class ExportTool:
         Returns:
             dict: {"success": bool, "output_path": str}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            script.dump(output_path)
-            return _context.make_result(True, f"草稿已导出到 {output_path}", output_path=output_path)
-        except Exception as e:
-            return _context.make_result(False, f"导出失败: {e}")
+        script = _context.load_script(folder_path, draft_name)
+        script.dump(output_path)
+        return _context.make_result(True, f"草稿已导出到 {output_path}", output_path=output_path)
 
     @staticmethod
+    @_context.catch_errors("序列化")
     def dumps_to_string(folder_path: str, draft_name: str) -> Dict[str, Any]:
         """将草稿导出为 JSON 字符串
 
@@ -43,19 +42,17 @@ class ExportTool:
         Returns:
             dict: {"success": bool, "json_string": str, "size": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            json_str = script.dumps()
-            return _context.make_result(
-                True,
-                f"草稿已序列化为 JSON（{len(json_str)} 字符）",
-                json_string=json_str,
-                size=len(json_str)
-            )
-        except Exception as e:
-            return _context.make_result(False, f"序列化失败: {e}")
+        script = _context.load_script(folder_path, draft_name)
+        json_str = script.dumps()
+        return _context.make_result(
+            True,
+            f"草稿已序列化为 JSON（{len(json_str)} 字符）",
+            json_string=json_str,
+            size=len(json_str)
+        )
 
     @staticmethod
+    @_context.catch_errors("恢复草稿")
     def load_from_string(folder_path: str, draft_name: str,
                          json_string: str) -> Dict[str, Any]:
         """从 JSON 字符串恢复草稿内容（覆盖写入）
@@ -70,13 +67,10 @@ class ExportTool:
         Returns:
             dict: {"success": bool}
         """
-        try:
-            script_path = _context.get_script_path(folder_path, draft_name)
-            with open(script_path, "w", encoding="utf-8") as f:
-                f.write(json_string)
-            return _context.make_result(True, "草稿已从 JSON 字符串恢复")
-        except Exception as e:
-            return _context.make_result(False, f"恢复草稿失败: {e}")
+        script_path = _context.get_script_path(folder_path, draft_name)
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(json_string)
+        return _context.make_result(True, "草稿已从 JSON 字符串恢复")
 
     @staticmethod
     def parse_draft_content(json_string: str) -> Dict[str, Any]:

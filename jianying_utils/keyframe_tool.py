@@ -55,6 +55,7 @@ class KeyframeTool:
     """
 
     @staticmethod
+    @_context.catch_errors("添加关键帧")
     def add_keyframe(folder_path: str, draft_name: str,
                      segment_id: str,
                      property_name: str,
@@ -73,38 +74,36 @@ class KeyframeTool:
         Returns:
             dict: {"success": bool}
         """
-        try:
-            if property_name not in _PROPERTY_MAP:
-                return _context.make_result(
-                    False,
-                    f"不支持的属性 '{property_name}'，可选: {list(_PROPERTY_MAP.keys())}"
-                )
-
-            script = _context.load_script(folder_path, draft_name)
-            segment = _find_segment(script, segment_id)
-
-            if segment is None:
-                return _context.make_result(False, f"未找到片段 {segment_id}")
-
-            prop = _PROPERTY_MAP[property_name]
-
-            # 音量关键帧对 AudioSegment 使用专用方法
-            if prop == KeyframeProperty.volume and isinstance(segment, AudioSegment):
-                offset = _parse_time(time_offset)
-                segment.add_keyframe(offset, value)
-            else:
-                segment.add_keyframe(prop, time_offset, value)
-
-            _context.save_script(script)
-
+        if property_name not in _PROPERTY_MAP:
             return _context.make_result(
-                True,
-                f"关键帧已添加: {property_name}={value} @ t={time_offset}"
+                False,
+                f"不支持的属性 '{property_name}'，可选: {list(_PROPERTY_MAP.keys())}"
             )
-        except Exception as e:
-            return _context.make_result(False, f"添加关键帧失败: {e}")
+
+        script = _context.load_script(folder_path, draft_name)
+        segment = _find_segment(script, segment_id)
+
+        if segment is None:
+            return _context.make_result(False, f"未找到片段 {segment_id}")
+
+        prop = _PROPERTY_MAP[property_name]
+
+        # 音量关键帧对 AudioSegment 使用专用方法
+        if prop == KeyframeProperty.volume and isinstance(segment, AudioSegment):
+            offset = _parse_time(time_offset)
+            segment.add_keyframe(offset, value)
+        else:
+            segment.add_keyframe(prop, time_offset, value)
+
+        _context.save_script(script)
+
+        return _context.make_result(
+            True,
+            f"关键帧已添加: {property_name}={value} @ t={time_offset}"
+        )
 
     @staticmethod
+    @_context.catch_errors("批量添加关键帧")
     def add_keyframes_batch(folder_path: str, draft_name: str,
                             keyframes: List[Dict[str, Any]]) -> Dict[str, Any]:
         """批量添加关键帧
@@ -121,36 +120,33 @@ class KeyframeTool:
         Returns:
             dict: {"success": bool, "count": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            count = 0
+        script = _context.load_script(folder_path, draft_name)
+        count = 0
 
-            for kf in keyframes:
-                seg_id = kf["segment_id"]
-                prop_name = kf["property"]
-                offset = kf["offset"]
-                value = kf["value"]
+        for kf in keyframes:
+            seg_id = kf["segment_id"]
+            prop_name = kf["property"]
+            offset = kf["offset"]
+            value = kf["value"]
 
-                if prop_name not in _PROPERTY_MAP:
-                    continue
+            if prop_name not in _PROPERTY_MAP:
+                continue
 
-                segment = _find_segment(script, seg_id)
-                if segment is None:
-                    continue
+            segment = _find_segment(script, seg_id)
+            if segment is None:
+                continue
 
-                prop = _PROPERTY_MAP[prop_name]
+            prop = _PROPERTY_MAP[prop_name]
 
-                if prop == KeyframeProperty.volume and isinstance(segment, AudioSegment):
-                    segment.add_keyframe(offset, value)
-                else:
-                    segment.add_keyframe(prop, offset, value)
-                count += 1
+            if prop == KeyframeProperty.volume and isinstance(segment, AudioSegment):
+                segment.add_keyframe(offset, value)
+            else:
+                segment.add_keyframe(prop, offset, value)
+            count += 1
 
-            _context.save_script(script)
+        _context.save_script(script)
 
-            return _context.make_result(True, f"批量添加了 {count} 个关键帧", count=count)
-        except Exception as e:
-            return _context.make_result(False, f"批量添加关键帧失败: {e}")
+        return _context.make_result(True, f"批量添加了 {count} 个关键帧", count=count)
 
     @staticmethod
     def list_properties() -> Dict[str, Any]:

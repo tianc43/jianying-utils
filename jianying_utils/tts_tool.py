@@ -47,6 +47,7 @@ class TTSTool:
     """
 
     @staticmethod
+    @_context.catch_errors("语音合成")
     def synthesize(
         text: str,
         voice: str = "zh-CN-XiaoxiaoNeural",
@@ -76,62 +77,61 @@ class TTSTool:
 
         try:
             import edge_tts
-            import time
-
-            # 确定输出路径
-            if not output_path:
-                fname = f"tts_{hash(text.strip()) & 0x7FFFFFFF:08x}.mp3"
-                output_path = os.path.join(_OUTPUT_DIR, fname)
-            os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-
-            start = time.time()
-
-            async def _run():
-                communicate = edge_tts.Communicate(
-                    text=text.strip(),
-                    voice=voice,
-                    rate=rate,
-                    pitch=pitch,
-                )
-                await communicate.save(output_path)
-
-            # 在新事件循环中运行
-            try:
-                loop = asyncio.get_running_loop()
-                # 已有运行中的事件循环，用线程池
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, _run())
-                    future.result(timeout=120)
-            except RuntimeError:
-                asyncio.run(_run())
-
-            elapsed = round(time.time() - start, 2)
-
-            # 获取音频实际时长（ms 精度），非合成耗时
-            audio_duration_sec = elapsed  # fallback
-            try:
-                from pymediainfo import MediaInfo
-                mi = MediaInfo.parse(output_path)
-                for track in mi.tracks:
-                    if track.track_type == "General" and track.duration:
-                        # track.duration 是毫秒，精确除以 1000 保留 3 位小数
-                        audio_duration_sec = round(float(track.duration) / 1000.0, 3)
-                        break
-            except Exception:
-                pass  # 使用合成耗时作为 fallback
-
-            return _context.make_result(
-                True,
-                f"合成完成 ({elapsed}s)",
-                audio_path=output_path,
-                duration_seconds=audio_duration_sec,
-                voice=voice,
-            )
         except ImportError:
             return _context.make_result(False, "edge-tts 未安装，请执行: pip install edge-tts")
-        except Exception as e:
-            return _context.make_result(False, f"语音合成失败: {e}")
+
+        import time
+
+        # 确定输出路径
+        if not output_path:
+            fname = f"tts_{hash(text.strip()) & 0x7FFFFFFF:08x}.mp3"
+            output_path = os.path.join(_OUTPUT_DIR, fname)
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+        start = time.time()
+
+        async def _run():
+            communicate = edge_tts.Communicate(
+                text=text.strip(),
+                voice=voice,
+                rate=rate,
+                pitch=pitch,
+            )
+            await communicate.save(output_path)
+
+        # 在新事件循环中运行
+        try:
+            loop = asyncio.get_running_loop()
+            # 已有运行中的事件循环，用线程池
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _run())
+                future.result(timeout=120)
+        except RuntimeError:
+            asyncio.run(_run())
+
+        elapsed = round(time.time() - start, 2)
+
+        # 获取音频实际时长（ms 精度），非合成耗时
+        audio_duration_sec = elapsed  # fallback
+        try:
+            from pymediainfo import MediaInfo
+            mi = MediaInfo.parse(output_path)
+            for track in mi.tracks:
+                if track.track_type == "General" and track.duration:
+                    # track.duration 是毫秒，精确除以 1000 保留 3 位小数
+                    audio_duration_sec = round(float(track.duration) / 1000.0, 3)
+                    break
+        except Exception:
+            pass  # 使用合成耗时作为 fallback
+
+        return _context.make_result(
+            True,
+            f"合成完成 ({elapsed}s)",
+            audio_path=output_path,
+            duration_seconds=audio_duration_sec,
+            voice=voice,
+        )
 
     @staticmethod
     def list_voices() -> Dict[str, Any]:

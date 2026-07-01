@@ -17,6 +17,7 @@ class TextTool:
     """文本/字幕工具类"""
 
     @staticmethod
+    @_context.catch_errors("添加文本")
     def add_text(folder_path: str, draft_name: str,
                  text: str, start: Union[str, int], duration: Union[str, int],
                  font: Optional[str] = None,
@@ -67,94 +68,92 @@ class TextTool:
         Returns:
             dict: {"success": bool, "segment_id": str}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
+        script = _context.load_script(folder_path, draft_name)
 
-            start_us = _parse_time(start)
-            duration_us = _parse_time(duration)
-            tr = Timerange(start_us, duration_us)
+        start_us = _parse_time(start)
+        duration_us = _parse_time(duration)
+        tr = Timerange(start_us, duration_us)
 
-            # 字体
-            font_enum = None
-            if font:
-                try:
-                    font_enum = FontType.from_name(font)
-                except ValueError:
-                    return _context.make_result(False, f"未找到字体 '{font}'")
+        # 字体
+        font_enum = None
+        if font:
+            try:
+                font_enum = FontType.from_name(font)
+            except ValueError:
+                return _context.make_result(False, f"未找到字体 '{font}'")
 
-            # 颜色
-            color_rgb = _hex_to_rgb(text_color)
+        # 颜色
+        color_rgb = _hex_to_rgb(text_color)
 
-            # 文本样式
-            style = TextStyle(
-                size=font_size,
-                bold=bold, italic=italic, underline=underline,
-                color=color_rgb, alpha=alpha,
-                align=alignment, vertical=vertical,
-                letter_spacing=letter_spacing, line_spacing=line_spacing,
-                auto_wrapping=auto_wrapping, max_line_width=line_max_width
+        # 文本样式
+        style = TextStyle(
+            size=font_size,
+            bold=bold, italic=italic, underline=underline,
+            color=color_rgb, alpha=alpha,
+            align=alignment, vertical=vertical,
+            letter_spacing=letter_spacing, line_spacing=line_spacing,
+            auto_wrapping=auto_wrapping, max_line_width=line_max_width
+        )
+
+        # 描边
+        text_border = None
+        if border:
+            border_color = _hex_to_rgb(border.get("color", "#000000"))
+            text_border = TextBorder(
+                alpha=border.get("alpha", 1.0),
+                color=border_color,
+                width=border.get("width", 40.0)
             )
 
-            # 描边
-            text_border = None
-            if border:
-                border_color = _hex_to_rgb(border.get("color", "#000000"))
-                text_border = TextBorder(
-                    alpha=border.get("alpha", 1.0),
-                    color=border_color,
-                    width=border.get("width", 40.0)
-                )
-
-            # 背景
-            text_bg = None
-            if background:
-                text_bg = TextBackground(
-                    color=background.get("color", "#000000"),
-                    style=background.get("style", 1),
-                    alpha=background.get("alpha", 1.0),
-                    round_radius=background.get("round_radius", 0.0),
-                    height=background.get("height", 0.14),
-                    width=background.get("width", 0.14),
-                    horizontal_offset=background.get("horizontal_offset", 0.5),
-                    vertical_offset=background.get("vertical_offset", 0.5)
-                )
-
-            # 阴影
-            text_shadow = None
-            if shadow:
-                shadow_color = _hex_to_rgb(shadow.get("color", "#000000"))
-                text_shadow = TextShadow(
-                    alpha=shadow.get("alpha", 1.0),
-                    color=shadow_color,
-                    diffuse=shadow.get("diffuse", 15.0),
-                    distance=shadow.get("distance", 5.0),
-                    angle=shadow.get("angle", -45.0)
-                )
-
-            cs = _context.parse_clip_settings(clip_settings)
-
-            segment = TextSegment(
-                text, tr,
-                font=font_enum,
-                style=style,
-                clip_settings=cs,
-                border=text_border,
-                background=text_bg,
-                shadow=text_shadow
+        # 背景
+        text_bg = None
+        if background:
+            text_bg = TextBackground(
+                color=background.get("color", "#000000"),
+                style=background.get("style", 1),
+                alpha=background.get("alpha", 1.0),
+                round_radius=background.get("round_radius", 0.0),
+                height=background.get("height", 0.14),
+                width=background.get("width", 0.14),
+                horizontal_offset=background.get("horizontal_offset", 0.5),
+                vertical_offset=background.get("vertical_offset", 0.5)
             )
 
-            script.add_segment(segment, track_name)
-            _context.save_script(script)
-
-            return _context.make_result(
-                True,
-                f"文本片段已添加",
-                segment_id=segment.segment_id
+        # 阴影
+        text_shadow = None
+        if shadow:
+            shadow_color = _hex_to_rgb(shadow.get("color", "#000000"))
+            text_shadow = TextShadow(
+                alpha=shadow.get("alpha", 1.0),
+                color=shadow_color,
+                diffuse=shadow.get("diffuse", 15.0),
+                distance=shadow.get("distance", 5.0),
+                angle=shadow.get("angle", -45.0)
             )
-        except Exception as e:
-            return _context.make_result(False, f"添加文本失败: {e}")
+
+        cs = _context.parse_clip_settings(clip_settings)
+
+        segment = TextSegment(
+            text, tr,
+            font=font_enum,
+            style=style,
+            clip_settings=cs,
+            border=text_border,
+            background=text_bg,
+            shadow=text_shadow
+        )
+
+        script.add_segment(segment, track_name)
+        _context.save_script(script)
+
+        return _context.make_result(
+            True,
+            f"文本片段已添加",
+            segment_id=segment.segment_id
+        )
 
     @staticmethod
+    @_context.catch_errors("批量添加字幕")
     def add_captions_batch(folder_path: str, draft_name: str,
                            captions: List[Dict[str, Any]],
                            font: Optional[str] = None,
@@ -203,100 +202,98 @@ class TextTool:
         Returns:
             dict: {"success": bool, "segment_ids": list, "count": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
+        script = _context.load_script(folder_path, draft_name)
 
-            font_enum = None
-            if font:
-                try:
-                    font_enum = FontType.from_name(font)
-                except ValueError:
-                    return _context.make_result(False, f"未找到字体 '{font}'")
+        font_enum = None
+        if font:
+            try:
+                font_enum = FontType.from_name(font)
+            except ValueError:
+                return _context.make_result(False, f"未找到字体 '{font}'")
 
-            color_rgb = _hex_to_rgb(text_color)
+        color_rgb = _hex_to_rgb(text_color)
 
-            style = TextStyle(
-                size=font_size,
-                bold=bold, italic=italic, underline=underline,
-                color=color_rgb, alpha=alpha,
-                align=alignment,
-                letter_spacing=letter_spacing, line_spacing=line_spacing,
-                auto_wrapping=auto_wrapping, max_line_width=line_max_width
+        style = TextStyle(
+            size=font_size,
+            bold=bold, italic=italic, underline=underline,
+            color=color_rgb, alpha=alpha,
+            align=alignment,
+            letter_spacing=letter_spacing, line_spacing=line_spacing,
+            auto_wrapping=auto_wrapping, max_line_width=line_max_width
+        )
+
+        text_border = None
+        if border:
+            border_color = _hex_to_rgb(border.get("color", "#000000"))
+            text_border = TextBorder(
+                alpha=border.get("alpha", 1.0),
+                color=border_color,
+                width=border.get("width", 40.0)
             )
 
-            text_border = None
-            if border:
-                border_color = _hex_to_rgb(border.get("color", "#000000"))
-                text_border = TextBorder(
-                    alpha=border.get("alpha", 1.0),
-                    color=border_color,
-                    width=border.get("width", 40.0)
-                )
-
-            text_bg = None
-            if background:
-                text_bg = TextBackground(
-                    color=background.get("color", "#000000"),
-                    style=background.get("style", 1),
-                    alpha=background.get("alpha", 1.0),
-                    round_radius=background.get("round_radius", 0.0),
-                    height=background.get("height", 0.14),
-                    width=background.get("width", 0.14),
-                    horizontal_offset=background.get("horizontal_offset", 0.5),
-                    vertical_offset=background.get("vertical_offset", 0.5)
-                )
-
-            text_shadow = None
-            if shadow:
-                shadow_color = _hex_to_rgb(shadow.get("color", "#000000"))
-                text_shadow = TextShadow(
-                    alpha=shadow.get("alpha", 1.0),
-                    color=shadow_color,
-                    diffuse=shadow.get("diffuse", 15.0),
-                    distance=shadow.get("distance", 5.0),
-                    angle=shadow.get("angle", -45.0)
-                )
-            elif has_shadow:
-                text_shadow = TextShadow()
-
-            # 默认字幕 clip_settings（模仿剪映导入字幕时的位置）
-            if clip_settings is None:
-                cs = ClipSettings(transform_y=-0.8)
-            else:
-                cs = _context.parse_clip_settings(clip_settings)
-
-            segment_ids = []
-            for cap in captions:
-                text = cap["text"]
-                start = cap["start"]
-                end = cap["end"]
-                duration = end - start
-                tr = Timerange(start, duration)
-
-                segment = TextSegment(
-                    text, tr,
-                    font=font_enum,
-                    style=style,
-                    clip_settings=cs,
-                    border=text_border,
-                    background=text_bg,
-                    shadow=text_shadow
-                )
-                script.add_segment(segment, track_name)
-                segment_ids.append(segment.segment_id)
-
-            _context.save_script(script)
-
-            return _context.make_result(
-                True,
-                f"批量添加了 {len(segment_ids)} 条字幕",
-                segment_ids=segment_ids,
-                count=len(segment_ids)
+        text_bg = None
+        if background:
+            text_bg = TextBackground(
+                color=background.get("color", "#000000"),
+                style=background.get("style", 1),
+                alpha=background.get("alpha", 1.0),
+                round_radius=background.get("round_radius", 0.0),
+                height=background.get("height", 0.14),
+                width=background.get("width", 0.14),
+                horizontal_offset=background.get("horizontal_offset", 0.5),
+                vertical_offset=background.get("vertical_offset", 0.5)
             )
-        except Exception as e:
-            return _context.make_result(False, f"批量添加字幕失败: {e}")
+
+        text_shadow = None
+        if shadow:
+            shadow_color = _hex_to_rgb(shadow.get("color", "#000000"))
+            text_shadow = TextShadow(
+                alpha=shadow.get("alpha", 1.0),
+                color=shadow_color,
+                diffuse=shadow.get("diffuse", 15.0),
+                distance=shadow.get("distance", 5.0),
+                angle=shadow.get("angle", -45.0)
+            )
+        elif has_shadow:
+            text_shadow = TextShadow()
+
+        # 默认字幕 clip_settings（模仿剪映导入字幕时的位置）
+        if clip_settings is None:
+            cs = ClipSettings(transform_y=-0.8)
+        else:
+            cs = _context.parse_clip_settings(clip_settings)
+
+        segment_ids = []
+        for cap in captions:
+            text = cap["text"]
+            start = cap["start"]
+            end = cap["end"]
+            duration = end - start
+            tr = Timerange(start, duration)
+
+            segment = TextSegment(
+                text, tr,
+                font=font_enum,
+                style=style,
+                clip_settings=cs,
+                border=text_border,
+                background=text_bg,
+                shadow=text_shadow
+            )
+            script.add_segment(segment, track_name)
+            segment_ids.append(segment.segment_id)
+
+        _context.save_script(script)
+
+        return _context.make_result(
+            True,
+            f"批量添加了 {len(segment_ids)} 条字幕",
+            segment_ids=segment_ids,
+            count=len(segment_ids)
+        )
 
     @staticmethod
+    @_context.catch_errors("导入 SRT")
     def import_srt(folder_path: str, draft_name: str,
                    srt_path: str, track_name: str,
                    font: Optional[str] = None,
@@ -322,39 +319,36 @@ class TextTool:
         Returns:
             dict: {"success": bool, "count": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
+        script = _context.load_script(folder_path, draft_name)
 
-            font_enum = None
-            if font:
-                try:
-                    font_enum = FontType.from_name(font)
-                except ValueError:
-                    return _context.make_result(False, f"未找到字体 '{font}'")
+        font_enum = None
+        if font:
+            try:
+                font_enum = FontType.from_name(font)
+            except ValueError:
+                return _context.make_result(False, f"未找到字体 '{font}'")
 
-            color_rgb = _hex_to_rgb(text_color)
+        color_rgb = _hex_to_rgb(text_color)
 
-            style = TextStyle(
-                size=font_size,
-                color=color_rgb,
-                align=alignment,
-                auto_wrapping=True
-            )
+        style = TextStyle(
+            size=font_size,
+            color=color_rgb,
+            align=alignment,
+            auto_wrapping=True
+        )
 
-            if clip_settings is None:
-                cs = ClipSettings(transform_y=-0.8)
-            else:
-                cs = _context.parse_clip_settings(clip_settings)
+        if clip_settings is None:
+            cs = ClipSettings(transform_y=-0.8)
+        else:
+            cs = _context.parse_clip_settings(clip_settings)
 
-            script.import_srt(srt_path, track_name,
-                              time_offset=time_offset,
-                              text_style=style,
-                              clip_settings=cs)
-            _context.save_script(script)
+        script.import_srt(srt_path, track_name,
+                          time_offset=time_offset,
+                          text_style=style,
+                          clip_settings=cs)
+        _context.save_script(script)
 
-            return _context.make_result(True, f"SRT 字幕已导入: {srt_path}")
-        except Exception as e:
-            return _context.make_result(False, f"导入 SRT 失败: {e}")
+        return _context.make_result(True, f"SRT 字幕已导入: {srt_path}")
 
 
 # ---------------------------------------------------------------------------

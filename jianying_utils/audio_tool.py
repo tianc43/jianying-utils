@@ -20,6 +20,7 @@ class AudioTool:
     """音频片段工具类"""
 
     @staticmethod
+    @_context.catch_errors("添加音频")
     def add_audio(folder_path: str, draft_name: str,
                   audio_path: str, start: Union[str, int],
                   duration: Optional[Union[str, int]] = None,
@@ -46,56 +47,54 @@ class AudioTool:
         Returns:
             dict: {"success": bool, "segment_id": str, "duration": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
+        script = _context.load_script(folder_path, draft_name)
 
-            audio_path = _resolve_audio_path(audio_path)
+        audio_path = _resolve_audio_path(audio_path)
 
-            start_us = _parse_time(start)
-            duration_us = _parse_time(duration) if duration is not None else None
+        start_us = _parse_time(start)
+        duration_us = _parse_time(duration) if duration is not None else None
 
-            material = AudioMaterial(audio_path)
+        material = AudioMaterial(audio_path)
 
-            if duration_us is None:
-                if speed != 1.0:
-                    duration_us = round(material.duration / speed)
-                else:
-                    duration_us = material.duration
+        if duration_us is None:
+            if speed != 1.0:
+                duration_us = round(material.duration / speed)
             else:
-                # 用户指定的 duration 超过素材时长时截断（TTS 舍入误差保护）
-                max_dur = round(material.duration / speed) if speed != 1.0 else material.duration
-                if duration_us > max_dur:
-                    duration_us = max_dur
-            target_tr = Timerange(start_us, duration_us)
+                duration_us = material.duration
+        else:
+            # 用户指定的 duration 超过素材时长时截断（TTS 舍入误差保护）
+            max_dur = round(material.duration / speed) if speed != 1.0 else material.duration
+            if duration_us > max_dur:
+                duration_us = max_dur
+        target_tr = Timerange(start_us, duration_us)
 
-            source_tr = None
-            if source_timerange_start is not None or source_timerange_duration is not None:
-                src_start = _parse_time(source_timerange_start) if source_timerange_start else 0
-                src_dur = _parse_time(source_timerange_duration) if source_timerange_duration else material.duration
-                source_tr = Timerange(src_start, src_dur)
+        source_tr = None
+        if source_timerange_start is not None or source_timerange_duration is not None:
+            src_start = _parse_time(source_timerange_start) if source_timerange_start else 0
+            src_dur = _parse_time(source_timerange_duration) if source_timerange_duration else material.duration
+            source_tr = Timerange(src_start, src_dur)
 
-            segment = AudioSegment(
-                material, target_tr,
-                source_timerange=source_tr,
-                speed=speed if source_tr is None else None,
-                volume=volume,
-                change_pitch=change_pitch
-            )
+        segment = AudioSegment(
+            material, target_tr,
+            source_timerange=source_tr,
+            speed=speed if source_tr is None else None,
+            volume=volume,
+            change_pitch=change_pitch
+        )
 
-            script.add_segment(segment, track_name)
-            _context.save_script(script)
+        script.add_segment(segment, track_name)
+        _context.save_script(script)
 
-            return _context.make_result(
-                True,
-                f"音频片段已添加: {material.material_name}",
-                segment_id=segment.segment_id,
-                material_name=material.material_name,
-                duration=segment.target_timerange.duration
-            )
-        except Exception as e:
-            return _context.make_result(False, f"添加音频失败: {e}")
+        return _context.make_result(
+            True,
+            f"音频片段已添加: {material.material_name}",
+            segment_id=segment.segment_id,
+            material_name=material.material_name,
+            duration=segment.target_timerange.duration
+        )
 
     @staticmethod
+    @_context.catch_errors("批量添加音频")
     def add_audios_batch(folder_path: str, draft_name: str,
                          audio_infos: List[Dict[str, Any]],
                          track_name: Optional[str] = None) -> Dict[str, Any]:
@@ -115,37 +114,35 @@ class AudioTool:
         Returns:
             dict: {"success": bool, "segment_ids": list[str], "count": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            segment_ids = []
+        script = _context.load_script(folder_path, draft_name)
+        segment_ids = []
 
-            for info in audio_infos:
-                audio_path = _resolve_audio_path(info["audio_path"])
-                start = info["start"]
-                end = info["end"]
-                duration = end - start
+        for info in audio_infos:
+            audio_path = _resolve_audio_path(info["audio_path"])
+            start = info["start"]
+            end = info["end"]
+            duration = end - start
 
-                speed = info.get("speed", 1.0)
-                volume = info.get("volume", 1.0)
+            speed = info.get("speed", 1.0)
+            volume = info.get("volume", 1.0)
 
-                material = AudioMaterial(audio_path)
-                target_tr = Timerange(start, duration)
-                segment = AudioSegment(material, target_tr, speed=speed, volume=volume)
-                script.add_segment(segment, track_name)
-                segment_ids.append(segment.segment_id)
+            material = AudioMaterial(audio_path)
+            target_tr = Timerange(start, duration)
+            segment = AudioSegment(material, target_tr, speed=speed, volume=volume)
+            script.add_segment(segment, track_name)
+            segment_ids.append(segment.segment_id)
 
-            _context.save_script(script)
+        _context.save_script(script)
 
-            return _context.make_result(
-                True,
-                f"批量添加了 {len(segment_ids)} 个音频片段",
-                segment_ids=segment_ids,
-                count=len(segment_ids)
-            )
-        except Exception as e:
-            return _context.make_result(False, f"批量添加音频失败: {e}")
+        return _context.make_result(
+            True,
+            f"批量添加了 {len(segment_ids)} 个音频片段",
+            segment_ids=segment_ids,
+            count=len(segment_ids)
+        )
 
     @staticmethod
+    @_context.catch_errors("添加淡入淡出")
     def add_fade(folder_path: str, draft_name: str,
                  segment_id: str,
                  in_duration: Union[str, int],
@@ -162,23 +159,21 @@ class AudioTool:
         Returns:
             dict: {"success": bool}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            segment = _find_segment_by_id(script, segment_id)
+        script = _context.load_script(folder_path, draft_name)
+        segment = _find_segment_by_id(script, segment_id)
 
-            if segment is None:
-                return _context.make_result(False, f"未找到片段 {segment_id}")
+        if segment is None:
+            return _context.make_result(False, f"未找到片段 {segment_id}")
 
-            if not isinstance(segment, AudioSegment):
-                return _context.make_result(False, "该片段不是音频片段")
+        if not isinstance(segment, AudioSegment):
+            return _context.make_result(False, "该片段不是音频片段")
 
-            segment.add_fade(in_duration, out_duration)
-            _context.save_script(script)
-            return _context.make_result(True, "淡入淡出已添加")
-        except Exception as e:
-            return _context.make_result(False, f"添加淡入淡出失败: {e}")
+        segment.add_fade(in_duration, out_duration)
+        _context.save_script(script)
+        return _context.make_result(True, "淡入淡出已添加")
 
     @staticmethod
+    @_context.catch_errors("添加关键帧")
     def add_volume_keyframe(folder_path: str, draft_name: str,
                             segment_id: str,
                             time_offset: int, volume: float) -> Dict[str, Any]:
@@ -194,18 +189,15 @@ class AudioTool:
         Returns:
             dict: {"success": bool}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            segment = _find_segment_by_id(script, segment_id)
+        script = _context.load_script(folder_path, draft_name)
+        segment = _find_segment_by_id(script, segment_id)
 
-            if segment is None:
-                return _context.make_result(False, f"未找到片段 {segment_id}")
+        if segment is None:
+            return _context.make_result(False, f"未找到片段 {segment_id}")
 
-            segment.add_keyframe(time_offset, volume)
-            _context.save_script(script)
-            return _context.make_result(True, f"音量关键帧已添加: t={time_offset}, v={volume}")
-        except Exception as e:
-            return _context.make_result(False, f"添加关键帧失败: {e}")
+        segment.add_keyframe(time_offset, volume)
+        _context.save_script(script)
+        return _context.make_result(True, f"音量关键帧已添加: t={time_offset}, v={volume}")
 
 
 # ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ class StickerTool:
     """贴纸工具类"""
 
     @staticmethod
+    @_context.catch_errors("添加贴纸")
     def add_sticker(folder_path: str, draft_name: str,
                     resource_id: str,
                     start: Union[str, int], duration: Union[str, int],
@@ -45,33 +46,30 @@ class StickerTool:
         Returns:
             dict: {"success": bool, "segment_id": str}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
+        script = _context.load_script(folder_path, draft_name)
 
-            start_us = _parse_time(start)
-            dur_us = _parse_time(duration)
-            tr = Timerange(start_us, dur_us)
+        start_us = _parse_time(start)
+        dur_us = _parse_time(duration)
+        tr = Timerange(start_us, dur_us)
 
-            cs = ClipSettings(
-                transform_x=transform_x,
-                transform_y=transform_y,
-                scale_x=scale_x,
-                scale_y=scale_y,
-                alpha=alpha,
-                rotation=rotation
-            )
+        cs = ClipSettings(
+            transform_x=transform_x,
+            transform_y=transform_y,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            alpha=alpha,
+            rotation=rotation
+        )
 
-            segment = StickerSegment(resource_id, tr, clip_settings=cs)
-            script.add_segment(segment, track_name)
-            _context.save_script(script)
+        segment = StickerSegment(resource_id, tr, clip_settings=cs)
+        script.add_segment(segment, track_name)
+        _context.save_script(script)
 
-            return _context.make_result(
-                True,
-                f"贴纸已添加",
-                segment_id=segment.segment_id
-            )
-        except Exception as e:
-            return _context.make_result(False, f"添加贴纸失败: {e}")
+        return _context.make_result(
+            True,
+            f"贴纸已添加",
+            segment_id=segment.segment_id
+        )
 
 
 def _parse_time(value):

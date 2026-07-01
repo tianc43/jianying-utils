@@ -9,6 +9,8 @@
    适合跨进程或跨节点的独立调用。
 """
 
+import functools
+import logging
 import os
 import json
 import re
@@ -16,6 +18,8 @@ import uuid
 from typing import Optional, Dict, Any, Tuple, List
 
 from pyJianYingDraft import DraftFolder, ScriptFile
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +95,7 @@ def load_script(folder_path: str, draft_name: str) -> ScriptFile:
     if key in _sessions:
         return _sessions[key]
 
+    logger.debug("从磁盘加载草稿: %s/%s", folder_path, draft_name)
     folder = DraftFolder(folder_path)
     script = folder.load_template(draft_name)
 
@@ -208,6 +213,8 @@ def save_script(script: ScriptFile) -> str:
     _update_draft_meta_info(script.save_path, script.content)
     # 根据 save_path 推断 (folder, draft_name) 并更新会话
     _cache_by_save_path(script)
+
+    logger.info("草稿已保存: %s", script.save_path)
 
     # 恢复轨道空壳，供后续 add_segment 使用
     script.tracks.update(saved_tracks)
@@ -689,3 +696,24 @@ def make_result(success: bool, message: str = "", **kwargs) -> Dict[str, Any]:
     result = {"success": success, "message": message}
     result.update(kwargs)
     return result
+
+
+def catch_errors(action: str):
+    """工具方法统一异常处理装饰器。
+
+    捕获方法体内未处理的异常，记录完整堆栈（logger.exception），
+    并返回 make_result(False, f"{action}失败: {e}")，
+    替代此前在每个工具方法里重复的 try/except 样板代码。
+    """
+    def decorator(func):
+        tool_logger = logging.getLogger(func.__module__)
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                tool_logger.exception("%s失败", action)
+                return make_result(False, f"{action}失败: {e}")
+        return wrapper
+    return decorator

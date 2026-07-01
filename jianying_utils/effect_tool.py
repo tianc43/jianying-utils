@@ -16,6 +16,7 @@ class EffectTool:
     """特效/滤镜工具类"""
 
     @staticmethod
+    @_context.catch_errors("添加场景特效")
     def add_scene_effect(folder_path: str, draft_name: str,
                          effect_name: str,
                          start: Union[str, int], duration: Union[str, int],
@@ -35,26 +36,24 @@ class EffectTool:
         Returns:
             dict: {"success": bool}
         """
+        script = _context.load_script(folder_path, draft_name)
+
         try:
-            script = _context.load_script(folder_path, draft_name)
+            effect_type = VideoSceneEffectType.from_name(effect_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到场景特效 '{effect_name}'")
 
-            try:
-                effect_type = VideoSceneEffectType.from_name(effect_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到场景特效 '{effect_name}'")
+        start_us = _parse_time(start)
+        dur_us = _parse_time(duration)
+        tr = Timerange(start_us, dur_us)
 
-            start_us = _parse_time(start)
-            dur_us = _parse_time(duration)
-            tr = Timerange(start_us, dur_us)
+        script.add_effect(effect_type, tr, track_name, params=params)
+        _context.save_script(script)
 
-            script.add_effect(effect_type, tr, track_name, params=params)
-            _context.save_script(script)
-
-            return _context.make_result(True, f"场景特效 '{effect_name}' 已添加")
-        except Exception as e:
-            return _context.make_result(False, f"添加场景特效失败: {e}")
+        return _context.make_result(True, f"场景特效 '{effect_name}' 已添加")
 
     @staticmethod
+    @_context.catch_errors("添加人物特效")
     def add_character_effect(folder_path: str, draft_name: str,
                              effect_name: str,
                              start: Union[str, int], duration: Union[str, int],
@@ -74,26 +73,24 @@ class EffectTool:
         Returns:
             dict: {"success": bool}
         """
+        script = _context.load_script(folder_path, draft_name)
+
         try:
-            script = _context.load_script(folder_path, draft_name)
+            effect_type = VideoCharacterEffectType.from_name(effect_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到人物特效 '{effect_name}'")
 
-            try:
-                effect_type = VideoCharacterEffectType.from_name(effect_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到人物特效 '{effect_name}'")
+        start_us = _parse_time(start)
+        dur_us = _parse_time(duration)
+        tr = Timerange(start_us, dur_us)
 
-            start_us = _parse_time(start)
-            dur_us = _parse_time(duration)
-            tr = Timerange(start_us, dur_us)
+        script.add_effect(effect_type, tr, track_name, params=params)
+        _context.save_script(script)
 
-            script.add_effect(effect_type, tr, track_name, params=params)
-            _context.save_script(script)
-
-            return _context.make_result(True, f"人物特效 '{effect_name}' 已添加")
-        except Exception as e:
-            return _context.make_result(False, f"添加人物特效失败: {e}")
+        return _context.make_result(True, f"人物特效 '{effect_name}' 已添加")
 
     @staticmethod
+    @_context.catch_errors("添加滤镜")
     def add_filter_track(folder_path: str, draft_name: str,
                          filter_name: str,
                          start: Union[str, int], duration: Union[str, int],
@@ -113,26 +110,24 @@ class EffectTool:
         Returns:
             dict: {"success": bool}
         """
+        script = _context.load_script(folder_path, draft_name)
+
         try:
-            script = _context.load_script(folder_path, draft_name)
+            filter_type = FilterType.from_name(filter_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到滤镜 '{filter_name}'")
 
-            try:
-                filter_type = FilterType.from_name(filter_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到滤镜 '{filter_name}'")
+        start_us = _parse_time(start)
+        dur_us = _parse_time(duration)
+        tr = Timerange(start_us, dur_us)
 
-            start_us = _parse_time(start)
-            dur_us = _parse_time(duration)
-            tr = Timerange(start_us, dur_us)
+        script.add_filter(filter_type, tr, track_name, intensity=intensity)
+        _context.save_script(script)
 
-            script.add_filter(filter_type, tr, track_name, intensity=intensity)
-            _context.save_script(script)
-
-            return _context.make_result(True, f"滤镜 '{filter_name}' 已添加，强度 {intensity}")
-        except Exception as e:
-            return _context.make_result(False, f"添加滤镜失败: {e}")
+        return _context.make_result(True, f"滤镜 '{filter_name}' 已添加，强度 {intensity}")
 
     @staticmethod
+    @_context.catch_errors("批量添加特效")
     def add_effects_batch(folder_path: str, draft_name: str,
                           effect_infos: List[Dict[str, Any]],
                           track_name: Optional[str] = None) -> Dict[str, Any]:
@@ -152,39 +147,36 @@ class EffectTool:
         Returns:
             dict: {"success": bool, "count": int}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            count = 0
+        script = _context.load_script(folder_path, draft_name)
+        count = 0
 
-            for info in effect_infos:
-                effect_name = info["effect_title"]
-                start = info["start"]
-                end = info["end"]
-                duration = end - start
-                params = info.get("params", None)
-                effect_type_str = info.get("type", "scene")
+        for info in effect_infos:
+            effect_name = info["effect_title"]
+            start = info["start"]
+            end = info["end"]
+            duration = end - start
+            params = info.get("params", None)
+            effect_type_str = info.get("type", "scene")
 
-                tr = Timerange(start, duration)
+            tr = Timerange(start, duration)
 
-                if effect_type_str == "character":
-                    try:
-                        et = VideoCharacterEffectType.from_name(effect_name)
-                    except ValueError:
-                        continue
-                else:
-                    try:
-                        et = VideoSceneEffectType.from_name(effect_name)
-                    except ValueError:
-                        continue
+            if effect_type_str == "character":
+                try:
+                    et = VideoCharacterEffectType.from_name(effect_name)
+                except ValueError:
+                    continue
+            else:
+                try:
+                    et = VideoSceneEffectType.from_name(effect_name)
+                except ValueError:
+                    continue
 
-                script.add_effect(et, tr, track_name, params=params)
-                count += 1
+            script.add_effect(et, tr, track_name, params=params)
+            count += 1
 
-            _context.save_script(script)
+        _context.save_script(script)
 
-            return _context.make_result(True, f"批量添加了 {count} 个特效", count=count)
-        except Exception as e:
-            return _context.make_result(False, f"批量添加特效失败: {e}")
+        return _context.make_result(True, f"批量添加了 {count} 个特效", count=count)
 
 
 def _parse_time(value):

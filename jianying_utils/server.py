@@ -9,16 +9,18 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 import re
 import base64
 import binascii
 import hashlib
+import time
 from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
 
-from fastapi import FastAPI, Query, Body, HTTPException
+from fastapi import FastAPI, Query, Body, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import zipfile
@@ -34,6 +36,10 @@ from jianying_utils import (
     MetadataQuery, TimeTool, ExportTool, TTSTool
 )
 from jianying_utils import _context
+from jianying_utils.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 项目根目录 & 关键路径
@@ -65,6 +71,14 @@ app = FastAPI(
     servers=[{"url": DEPLOY_URL, "description": "剪映草稿 API 服务器"}],
     generate_unique_id_function=lambda route: route.name,
 )
+
+@app.on_event("startup")
+def _log_startup_info():
+    """记录启动信息（无论通过 uvicorn.run 还是 gunicorn worker 启动都会执行）"""
+    logger.info("JianYing Draft API 启动完成 (pid=%d)", os.getpid())
+    logger.info("Drafts dir:   %s", DRAFTS_DIR)
+    logger.info("OpenAPI:      %s/openapi.json", DEPLOY_URL)
+    logger.info("Swagger UI:   %s/docs", DEPLOY_URL)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 重写 openapi() — 直接返回本地静态文件，不再动态生成
@@ -104,6 +118,25 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def _log_requests(request: Request, call_next):
+    """统一请求日志：方法、路径、状态码、耗时。
+
+    gunicorn 的 --access-logfile 只覆盖生产部署；开发时直接用 uvicorn 启动
+    则完全没有请求记录，这里统一走应用日志，两种启动方式下都能看到。
+    """
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+        logger.exception("%s %s 处理异常 (%.1fms)", request.method, request.url.path, elapsed_ms)
+        raise
+    elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+    log_fn = logger.info if response.status_code < 400 else logger.warning
+    log_fn("%s %s -> %d (%.1fms)", request.method, request.url.path, response.status_code, elapsed_ms)
+    return response
+
 # 挂载静态文件目录（Swagger UI 查看器等）
 if _PROJECT_ROOT.is_dir():
     app.mount("/static", StaticFiles(directory=str(_PROJECT_ROOT)), name="static")
@@ -132,7 +165,7 @@ def _load_disk_registry() -> Dict[str, list]:
             with open(_REGISTRY_FILE, "r", encoding="utf-8") as f:
                 return _json.load(f)
     except Exception:
-        pass
+        logger.warning("草稿注册表读取失败，将视为空注册表: %s", _REGISTRY_FILE, exc_info=True)
     return {}
 
 def _save_disk_registry(reg: Dict[str, list]):
@@ -758,10 +791,12 @@ def create_draft(body: DraftCreate):
         DRAFTS_DIR, name, body.width, body.height, body.fps, allow_replace=True
     )
     if not result["success"]:
+        logger.error("创建草稿失败: draft_name=%s reason=%s", name, result["message"])
         raise HTTPException(500, result["message"])
     _draft_registry[draft_id] = (DRAFTS_DIR, name)
     # 同步到磁盘（供其他 worker 查找）
     _save_disk_registry({**_load_disk_registry(), draft_id: [DRAFTS_DIR, name]})
+    logger.info("草稿已创建: draft_id=%s draft_name=%s", draft_id, name)
     return _ok(draft_id=draft_id, draft_name=name,
                draft_folder=result.get("draft_folder"),
                script_path=result.get("script_path"),
@@ -796,6 +831,10 @@ def delete_draft(draft_id: str):
     disk.pop(draft_id, None)
     _save_disk_registry(disk)
     _context.clear_session(folder, name)
+    if result["success"]:
+        logger.info("草稿已删除: draft_id=%s draft_name=%s", draft_id, name)
+    else:
+        logger.warning("删除草稿失败: draft_id=%s reason=%s", draft_id, result["message"])
     return result
 
 @app.post("/drafts/{draft_id}/save", tags=["草稿管理"], summary="保存草稿", response_model=DraftSaveResponse)
@@ -869,6 +908,7 @@ def _portable_json_file(path: str, draft_dir: str, draft_name: str) -> str:
         with open(path, "r", encoding="utf-8-sig") as f:
             data = _json.load(f)
     except Exception:
+        logger.debug("草稿 JSON 解析失败，按原始文本打包: %s", path, exc_info=True)
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
 
@@ -1367,9 +1407,4 @@ def tts_download(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    print(f"Drafts dir:  {DRAFTS_DIR}")
-    print(f"OpenAPI:     {DEPLOY_URL}/openapi.json")
-    print(f"OpenAPI YAML: {DEPLOY_URL}/openapi.yaml")
-    print(f"Swagger UI:  {DEPLOY_URL}/docs")
-    print(f"API docs:    {DEPLOY_URL}/redoc")
     uvicorn.run("jianying_utils.server:app", host="0.0.0.0", port=8000, reload=True)

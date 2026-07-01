@@ -24,6 +24,7 @@ class AnimationTool:
     # -------------------------------------------------------------------
 
     @staticmethod
+    @_context.catch_errors("添加入场动画")
     def add_video_intro(folder_path: str, draft_name: str,
                         segment_id: str,
                         animation_name: str,
@@ -41,16 +42,14 @@ class AnimationTool:
             dict: {"success": bool}
         """
         try:
-            try:
-                anim_type = IntroType.from_name(animation_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到入场动画 '{animation_name}'")
+            anim_type = IntroType.from_name(animation_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到入场动画 '{animation_name}'")
 
-            return _add_video_animation(folder_path, draft_name, segment_id, anim_type, duration)
-        except Exception as e:
-            return _context.make_result(False, f"添加入场动画失败: {e}")
+        return _add_video_animation(folder_path, draft_name, segment_id, anim_type, duration)
 
     @staticmethod
+    @_context.catch_errors("添加出场动画")
     def add_video_outro(folder_path: str, draft_name: str,
                         segment_id: str,
                         animation_name: str,
@@ -68,16 +67,14 @@ class AnimationTool:
             dict: {"success": bool}
         """
         try:
-            try:
-                anim_type = OutroType.from_name(animation_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到出场动画 '{animation_name}'")
+            anim_type = OutroType.from_name(animation_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到出场动画 '{animation_name}'")
 
-            return _add_video_animation(folder_path, draft_name, segment_id, anim_type, duration)
-        except Exception as e:
-            return _context.make_result(False, f"添加出场动画失败: {e}")
+        return _add_video_animation(folder_path, draft_name, segment_id, anim_type, duration)
 
     @staticmethod
+    @_context.catch_errors("添加组合动画")
     def add_video_group_animation(folder_path: str, draft_name: str,
                                   segment_id: str,
                                   animation_name: str,
@@ -97,20 +94,18 @@ class AnimationTool:
             dict: {"success": bool}
         """
         try:
-            try:
-                anim_type = GroupAnimationType.from_name(animation_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到组合动画 '{animation_name}'")
+            anim_type = GroupAnimationType.from_name(animation_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到组合动画 '{animation_name}'")
 
-            return _add_video_animation(folder_path, draft_name, segment_id, anim_type, duration)
-        except Exception as e:
-            return _context.make_result(False, f"添加组合动画失败: {e}")
+        return _add_video_animation(folder_path, draft_name, segment_id, anim_type, duration)
 
     # -------------------------------------------------------------------
     # 文本动画
     # -------------------------------------------------------------------
 
     @staticmethod
+    @_context.catch_errors("添加文本入场动画")
     def add_text_intro(folder_path: str, draft_name: str,
                        segment_id: str,
                        animation_name: str,
@@ -128,16 +123,14 @@ class AnimationTool:
             dict: {"success": bool}
         """
         try:
-            try:
-                anim_type = TextIntro.from_name(animation_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到文本入场动画 '{animation_name}'")
+            anim_type = TextIntro.from_name(animation_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到文本入场动画 '{animation_name}'")
 
-            return _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration)
-        except Exception as e:
-            return _context.make_result(False, f"添加文本入场动画失败: {e}")
+        return _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration)
 
     @staticmethod
+    @_context.catch_errors("添加文本出场动画")
     def add_text_outro(folder_path: str, draft_name: str,
                        segment_id: str,
                        animation_name: str,
@@ -155,16 +148,14 @@ class AnimationTool:
             dict: {"success": bool}
         """
         try:
-            try:
-                anim_type = TextOutro.from_name(animation_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到文本出场动画 '{animation_name}'")
+            anim_type = TextOutro.from_name(animation_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到文本出场动画 '{animation_name}'")
 
-            return _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration)
-        except Exception as e:
-            return _context.make_result(False, f"添加文本出场动画失败: {e}")
+        return _add_text_animation(folder_path, draft_name, segment_id, anim_type, duration)
 
     @staticmethod
+    @_context.catch_errors("添加文本循环动画")
     def add_text_loop(folder_path: str, draft_name: str,
                       segment_id: str,
                       animation_name: str) -> Dict[str, Any]:
@@ -182,14 +173,11 @@ class AnimationTool:
             dict: {"success": bool}
         """
         try:
-            try:
-                anim_type = TextLoopAnim.from_name(animation_name)
-            except ValueError:
-                return _context.make_result(False, f"未找到文本循环动画 '{animation_name}'")
+            anim_type = TextLoopAnim.from_name(animation_name)
+        except ValueError:
+            return _context.make_result(False, f"未找到文本循环动画 '{animation_name}'")
 
-            return _add_text_animation(folder_path, draft_name, segment_id, anim_type, None)
-        except Exception as e:
-            return _context.make_result(False, f"添加文本循环动画失败: {e}")
+        return _add_text_animation(folder_path, draft_name, segment_id, anim_type, None)
 
 
 # ---------------------------------------------------------------------------

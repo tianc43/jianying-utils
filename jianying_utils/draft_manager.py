@@ -13,6 +13,7 @@ class DraftManager:
     """草稿文件夹管理工具类"""
 
     @staticmethod
+    @_context.catch_errors("创建草稿")
     def create_draft(folder_path: str, draft_name: str,
                      width: int = 1920, height: int = 1080, fps: int = 30,
                      maintrack_adsorb: bool = True,
@@ -31,24 +32,22 @@ class DraftManager:
         Returns:
             dict: {"success": bool, "draft_folder": str, "draft_name": str, "script_path": str}
         """
-        try:
-            script = _context.create_script(
-                folder_path, draft_name, width, height, fps,
-                maintrack_adsorb=maintrack_adsorb,
-                allow_replace=allow_replace
-            )
-            script.save()
-            return _context.make_result(
-                True,
-                f"草稿 '{draft_name}' 创建成功",
-                draft_folder=_context.get_draft_path(folder_path, draft_name),
-                draft_name=draft_name,
-                script_path=script.save_path
-            )
-        except Exception as e:
-            return _context.make_result(False, f"创建草稿失败: {e}")
+        script = _context.create_script(
+            folder_path, draft_name, width, height, fps,
+            maintrack_adsorb=maintrack_adsorb,
+            allow_replace=allow_replace
+        )
+        script.save()
+        return _context.make_result(
+            True,
+            f"草稿 '{draft_name}' 创建成功",
+            draft_folder=_context.get_draft_path(folder_path, draft_name),
+            draft_name=draft_name,
+            script_path=script.save_path
+        )
 
     @staticmethod
+    @_context.catch_errors("加载草稿")
     def load_draft(folder_path: str, draft_name: str) -> Dict[str, Any]:
         """加载已有草稿
 
@@ -59,23 +58,21 @@ class DraftManager:
         Returns:
             dict: {"success": bool, "draft_folder": str, "draft_name": str, "script_path": str}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            return _context.make_result(
-                True,
-                f"草稿 '{draft_name}' 加载成功",
-                draft_folder=_context.get_draft_path(folder_path, draft_name),
-                draft_name=draft_name,
-                script_path=script.save_path,
-                duration=script.duration,
-                width=script.width,
-                height=script.height,
-                fps=script.fps
-            )
-        except Exception as e:
-            return _context.make_result(False, f"加载草稿失败: {e}")
+        script = _context.load_script(folder_path, draft_name)
+        return _context.make_result(
+            True,
+            f"草稿 '{draft_name}' 加载成功",
+            draft_folder=_context.get_draft_path(folder_path, draft_name),
+            draft_name=draft_name,
+            script_path=script.save_path,
+            duration=script.duration,
+            width=script.width,
+            height=script.height,
+            fps=script.fps
+        )
 
     @staticmethod
+    @_context.catch_errors("复制草稿")
     def duplicate_draft(folder_path: str, template_name: str,
                         new_draft_name: str,
                         allow_replace: bool = False) -> Dict[str, Any]:
@@ -90,20 +87,18 @@ class DraftManager:
         Returns:
             dict: {"success": bool, "draft_folder": str, "draft_name": str}
         """
-        try:
-            folder_obj = __import__("pyjianyingdraft", fromlist=["DraftFolder"]).DraftFolder(folder_path)
-            script = folder_obj.duplicate_as_template(template_name, new_draft_name, allow_replace)
-            return _context.make_result(
-                True,
-                f"草稿 '{template_name}' 已复制为 '{new_draft_name}'",
-                draft_folder=_context.get_draft_path(folder_path, new_draft_name),
-                draft_name=new_draft_name,
-                script_path=script.save_path
-            )
-        except Exception as e:
-            return _context.make_result(False, f"复制草稿失败: {e}")
+        folder_obj = __import__("pyjianyingdraft", fromlist=["DraftFolder"]).DraftFolder(folder_path)
+        script = folder_obj.duplicate_as_template(template_name, new_draft_name, allow_replace)
+        return _context.make_result(
+            True,
+            f"草稿 '{template_name}' 已复制为 '{new_draft_name}'",
+            draft_folder=_context.get_draft_path(folder_path, new_draft_name),
+            draft_name=new_draft_name,
+            script_path=script.save_path
+        )
 
     @staticmethod
+    @_context.catch_errors("列出草稿")
     def list_drafts(folder_path: str) -> Dict[str, Any]:
         """列出草稿文件夹中所有草稿
 
@@ -113,14 +108,12 @@ class DraftManager:
         Returns:
             dict: {"success": bool, "drafts": list[str]}
         """
-        try:
-            folder_obj = __import__("pyjianyingdraft", fromlist=["DraftFolder"]).DraftFolder(folder_path)
-            drafts = folder_obj.list_drafts()
-            return _context.make_result(True, f"共找到 {len(drafts)} 个草稿", drafts=drafts)
-        except Exception as e:
-            return _context.make_result(False, f"列出草稿失败: {e}")
+        folder_obj = __import__("pyjianyingdraft", fromlist=["DraftFolder"]).DraftFolder(folder_path)
+        drafts = folder_obj.list_drafts()
+        return _context.make_result(True, f"共找到 {len(drafts)} 个草稿", drafts=drafts)
 
     @staticmethod
+    @_context.catch_errors("删除草稿")
     def remove_draft(folder_path: str, draft_name: str) -> Dict[str, Any]:
         """删除指定草稿
 
@@ -131,14 +124,12 @@ class DraftManager:
         Returns:
             dict: {"success": bool}
         """
-        try:
-            folder_obj = __import__("pyjianyingdraft", fromlist=["DraftFolder"]).DraftFolder(folder_path)
-            folder_obj.remove(draft_name)
-            return _context.make_result(True, f"草稿 '{draft_name}' 已删除")
-        except Exception as e:
-            return _context.make_result(False, f"删除草稿失败: {e}")
+        folder_obj = __import__("pyjianyingdraft", fromlist=["DraftFolder"]).DraftFolder(folder_path)
+        folder_obj.remove(draft_name)
+        return _context.make_result(True, f"草稿 '{draft_name}' 已删除")
 
     @staticmethod
+    @_context.catch_errors("保存草稿")
     def save_draft(folder_path: str, draft_name: str) -> Dict[str, Any]:
         """保存草稿到磁盘
 
@@ -149,9 +140,6 @@ class DraftManager:
         Returns:
             dict: {"success": bool, "script_path": str}
         """
-        try:
-            script = _context.load_script(folder_path, draft_name)
-            path = _context.save_script(script)
-            return _context.make_result(True, "草稿已保存", script_path=path)
-        except Exception as e:
-            return _context.make_result(False, f"保存草稿失败: {e}")
+        script = _context.load_script(folder_path, draft_name)
+        path = _context.save_script(script)
+        return _context.make_result(True, "草稿已保存", script_path=path)

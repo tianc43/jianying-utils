@@ -89,6 +89,25 @@ export JIANYING_DRAFTS_DIR=/data/jianying/drafts
 uvicorn jianying_utils.server:app --host 0.0.0.0 --port 8000
 ```
 
+### 日志
+
+服务启动时会自动配置日志输出到 stdout（`docker logs` / `docker-compose logs -f` 直接可见），格式为：
+
+```
+2026-07-01 10:23:01 INFO     jianying_utils.server: 草稿已创建: draft_id=a1b2c3d4e5f6 draft_name=demo
+2026-07-01 10:23:02 ERROR    jianying_utils.audio_tool: 添加音频失败
+Traceback (most recent call last):
+  ...
+```
+
+- 每个 HTTP 请求都会记录一行 `METHOD PATH -> STATUS (耗时ms)`（2xx/3xx 用 INFO，4xx/5xx 用 WARNING）。
+- 工具类方法（`DraftManager`/`AudioTool`/`VideoTool` 等）内部异常统一通过 `logger.exception` 记录完整堆栈，同时仍返回 `{"success": false, "message": "..."}`，不影响现有调用方行为。
+- 日志级别通过 `JIANYING_LOG_LEVEL` 环境变量调整（默认 `INFO`，可选 `DEBUG`/`WARNING`/`ERROR`）：
+
+```bash
+export JIANYING_LOG_LEVEL=DEBUG
+```
+
 ## API 概览（50 个端点）
 
 | 分类 | 端点 | 说明 |

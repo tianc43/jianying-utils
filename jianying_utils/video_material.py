@@ -21,18 +21,18 @@ def create_video_material(
     API contract unchanged while giving pyJianYingDraft a format it parses
     reliably.
     """
+    converted_path = _convert_webp_to_png_if_needed(path)
+    if converted_path != path:
+        return VideoMaterial(converted_path, material_name=material_name, crop_settings=crop_settings)
+
     material = VideoMaterial(path, material_name=material_name, crop_settings=crop_settings)
     if _has_dimensions(material):
-        return material
-
-    converted_path = _convert_webp_to_png_if_needed(path)
-    if converted_path == path:
         return material
     return VideoMaterial(converted_path, material_name=material_name, crop_settings=crop_settings)
 
 
 def _has_dimensions(material: VideoMaterial) -> bool:
-    return material.width is not None and material.height is not None
+    return bool(material.width) and bool(material.height)
 
 
 def _convert_webp_to_png_if_needed(path: str) -> str:

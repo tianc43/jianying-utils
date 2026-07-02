@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     environment:
       - JIANYING_DRAFTS_DIR=/app/drafts
+      - JIANYING_DOWNLOAD_DIR=/app/downloads
       - JIANYING_TTS_DIR=/app/tts_output    # TTS 音频输出目录
       - ROOT_PATH=/jianying-utils            # nginx 代理路径前缀
       - DEPLOY_URL=https://tianc43.xyz/jianying-utils
@@ -16,6 +17,7 @@ services:
     volumes:
       - ./data/drafts:/app/drafts            # 草稿文件 → 主机 ./data/drafts
       - ./data/uploads:/app/uploads          # 上传素材 → 主机 ./data/uploads
+      - ./data/downloads:/app/downloads      # 远程素材缓存 → 主机 ./data/downloads
       - ./data/tts:/app/tts_output           # TTS 音频 → 主机 ./data/tts
       - ./assets:/app/assets                 # 素材文件 → 主机 ./assets
     restart: unless-stopped

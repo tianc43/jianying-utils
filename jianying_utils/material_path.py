@@ -12,7 +12,7 @@ from typing import Optional
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DOWNLOAD_DIR = os.environ.get("JIANYING_TTS_DIR", "") or os.path.join(
+DOWNLOAD_DIR = os.environ.get("JIANYING_DOWNLOAD_DIR", "") or os.path.join(
     os.environ.get("JIANYING_DRAFTS_DIR", os.path.dirname(__file__)), "..", "downloads"
 )
 

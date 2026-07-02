@@ -15,6 +15,7 @@ services:
       - JIANYING_LOG_LEVEL=INFO              # 日志级别: DEBUG/INFO/WARNING/ERROR
     volumes:
       - ./data/drafts:/app/drafts            # 草稿文件 → 主机 ./data/drafts
+      - ./data/uploads:/app/uploads          # 上传素材 → 主机 ./data/uploads
       - ./data/tts:/app/tts_output           # TTS 音频 → 主机 ./data/tts
       - ./assets:/app/assets                 # 素材文件 → 主机 ./assets
     restart: unless-stopped

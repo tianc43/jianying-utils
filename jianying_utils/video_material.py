@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from typing import Optional
 
 from pyJianYingDraft import CropSettings, VideoMaterial
@@ -13,45 +14,55 @@ def create_video_material(
     material_name: Optional[str] = None,
     crop_settings: CropSettings = CropSettings(),
 ) -> VideoMaterial:
-    """Create a VideoMaterial, converting WebP photos when MediaInfo omits size.
+    """Create a VideoMaterial, with native WebP photo support.
 
-    pyJianYingDraft can classify WebP files as photos but MediaInfo may leave
-    width/height empty. The exported draft then fails because JianYing requires
-    non-empty image dimensions. Converting the WebP to a PNG sidecar keeps the
-    API contract unchanged while giving pyJianYingDraft a format it parses
-    reliably.
+    pyJianYingDraft 0.2.7 relies on MediaInfo for photo dimensions. MediaInfo
+    may detect WebP as an image while omitting width/height, causing
+    VideoMaterial construction to fail. For WebP, read dimensions with Pillow
+    and build the same VideoMaterial shape while keeping the original .webp
+    path in the exported draft.
     """
-    converted_path = _convert_webp_to_png_if_needed(path)
-    if converted_path != path:
-        return VideoMaterial(converted_path, material_name=material_name, crop_settings=crop_settings)
+    if _is_webp(path):
+        return _create_webp_photo_material(path, material_name, crop_settings)
 
     material = VideoMaterial(path, material_name=material_name, crop_settings=crop_settings)
     if _has_dimensions(material):
         return material
-    return VideoMaterial(converted_path, material_name=material_name, crop_settings=crop_settings)
+    return material
 
 
 def _has_dimensions(material: VideoMaterial) -> bool:
     return bool(material.width) and bool(material.height)
 
 
-def _convert_webp_to_png_if_needed(path: str) -> str:
-    if os.path.splitext(path)[1].lower() != ".webp":
-        return path
+def _is_webp(path: str) -> bool:
+    return os.path.splitext(path)[1].lower() == ".webp"
 
-    png_path = f"{path}.png"
-    if _is_cache_current(path, png_path):
-        return png_path
 
+def _create_webp_photo_material(
+    path: str,
+    material_name: Optional[str],
+    crop_settings: CropSettings,
+) -> VideoMaterial:
+    path = os.path.abspath(path)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"找不到 {path}")
     try:
         from PIL import Image
     except ImportError as exc:
-        raise RuntimeError("WebP 图片需要 Pillow 才能转换为 PNG: pip install Pillow") from exc
+        raise RuntimeError("WebP 图片需要 Pillow 才能读取宽高: pip install Pillow") from exc
 
     with Image.open(path) as image:
-        image.save(png_path, "PNG")
-    return png_path
+        width, height = image.size
 
-
-def _is_cache_current(source_path: str, cache_path: str) -> bool:
-    return os.path.isfile(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(source_path)
+    material = VideoMaterial.__new__(VideoMaterial)
+    material.material_name = material_name if material_name else os.path.basename(path)
+    material.material_id = uuid.uuid4().hex
+    material.path = path
+    material.crop_settings = crop_settings
+    material.local_material_id = ""
+    material.material_type = "photo"
+    material.duration = 10800000000
+    material.width = int(width)
+    material.height = int(height)
+    return material
